@@ -1,0 +1,199 @@
+@page
+@model XeGhepApp.Pages.ChuyenCuaToiModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XeGhép — Tài xế — Chuyến của tôi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand"><span class="dot-route">X</span><div>XeGhép<small>TÀI XẾ</small></div></div>
+    <nav class="side-nav">
+      <a href="/Index"><span class="ic">🏠</span> Tổng quan</a>
+      <a href="/YeuCauDatCho"><span class="ic">📥</span> Yêu cầu đặt chỗ @if(Model.PendingCount > 0){<span class="badge-count">@Model.PendingCount</span>}</a>
+      <a href="/ChuyenCuaToi" class="active"><span class="ic">🧭</span> Chuyến của tôi</a>
+      <a href="/ThuNhap"><span class="ic">₫</span> Thu nhập</a>
+      <a href="/HoSo"><span class="ic">👤</span> Hồ sơ &amp; giấy tờ</a>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="av">@(Model.Avatar ?? "U")</div>
+      <div><b>@Model.FullName</b><span>★ @Model.Rating.ToString("0.0") · Đã duyệt</span></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="view" id="view-mytrips">
+      <div class="topbar"><div><h1>Chuyến của tôi</h1><p>Quản lý các chuyến đã đăng và hành khách đã xác nhận.</p></div></div>
+
+      <div class="tabs">
+        <button class="active" data-tab="d-upcoming" onclick="switchDTab('d-upcoming')">Sắp tới @(Model.UpcomingTrips.Any() ? $"({Model.UpcomingTrips.Count})" : "")</button>
+        <button data-tab="d-running" onclick="switchDTab('d-running')">Đang chạy @(Model.RunningTrips.Any() ? $"({Model.RunningTrips.Count})" : "")</button>
+        <button data-tab="d-done" onclick="switchDTab('d-done')">Hoàn thành</button>
+      </div>
+
+      <div id="dtab-d-upcoming">
+        @if (!Model.UpcomingTrips.Any()) {
+          <p style="font-size:13.5px;color:var(--ink-soft)">Không có chuyến nào sắp khởi hành.</p>
+        }
+        @foreach (var trip in Model.UpcomingTrips) {
+        <div class="trip-manage-card" data-trip-id="@trip.TripId">
+          <div class="top"><span class="status-pill upcoming">Sắp khởi hành</span><span class="mono" style="font-size:12.5px;color:var(--ink-faint)">@trip.DepartureTime.ToString("HH:mm") · @trip.DepartureTime.ToString("dd/MM/yyyy")</span></div>
+          <div class="route-strip">
+            <div class="pt"><div class="city">@trip.RouteFrom</div><div class="sub">@trip.PickupLocation</div></div>
+            <div class="route-line"><div class="node start"></div><span class="van">🚐</span><div class="node end"></div></div>
+            <div class="pt end"><div class="city">@trip.RouteTo</div><div class="sub">@trip.DropoffLocation</div></div>
+          </div>
+          <div class="pax-list">
+            @foreach (var p in trip.Pax) {
+              <div class="pax-chip"><span class="av">@(p.Avatar ?? p.FullName.Split(' ').LastOrDefault()?.Substring(0, 1))</span> @(p.FullName.Split(' ').LastOrDefault()) · @p.Seats ghế</div>
+            }
+            @if (!trip.Pax.Any()) {
+              <span style="font-size:12.5px;color:var(--ink-faint);">Chưa có hành khách đặt chỗ</span>
+            }
+          </div>
+          <div class="bottom">
+            <span style="font-size:12.5px;color:var(--ink-soft)">@trip.SeatsBooked/@trip.TotalSeats ghế đã đặt</span>
+            <button class="btn btn-green btn-sm" onclick="startTrip(this)">Bắt đầu chuyến</button>
+          </div>
+        </div>
+        }
+      </div>
+
+      <div id="dtab-d-running" class="hidden">
+        @if (!Model.RunningTrips.Any()) {
+          <p style="font-size:13.5px;color:var(--ink-soft)">Hiện không có chuyến nào đang chạy.</p>
+        }
+        @foreach (var trip in Model.RunningTrips) {
+        <div class="trip-manage-card" data-trip-id="@trip.TripId">
+          <div class="top"><span class="status-pill running">Đang di chuyển</span><span class="mono" style="font-size:12.5px;color:var(--ink-faint)">Khởi hành @trip.DepartureTime.ToString("HH:mm")</span></div>
+          <div class="route-strip">
+            <div class="pt"><div class="city">@trip.RouteFrom</div><div class="sub">@trip.PickupLocation</div></div>
+            <div class="route-line"><div class="node start"></div><span class="van">🚐</span><div class="node end"></div></div>
+            <div class="pt end"><div class="city">@trip.RouteTo</div><div class="sub">@trip.DropoffLocation</div></div>
+          </div>
+          <div class="pax-list">
+            @foreach (var p in trip.Pax) {
+              <div class="pax-chip"><span class="av">@(p.Avatar ?? p.FullName.Split(' ').LastOrDefault()?.Substring(0, 1))</span> @(p.FullName.Split(' ').LastOrDefault()) · @p.Seats ghế</div>
+            }
+            @if (!trip.Pax.Any()) {
+              <span style="font-size:12.5px;color:var(--ink-faint);">Không có hành khách</span>
+            }
+          </div>
+          <div class="bottom">
+            <span style="font-size:12.5px;color:var(--ink-soft)">@trip.RouteTo · @trip.PricePerSeat.ToString("N0")đ/ghế</span>
+            <button class="btn btn-primary btn-sm" onclick="completeTrip(this)">Hoàn thành chuyến</button>
+          </div>
+        </div>
+        }
+      </div>
+
+      <div id="dtab-d-done" class="hidden">
+        @if (!Model.DoneTrips.Any()) {
+          <p style="font-size:13.5px;color:var(--ink-soft)">Chưa có chuyến nào hoàn thành.</p>
+        }
+        @foreach (var trip in Model.DoneTrips) {
+        <div class="trip-manage-card" data-trip-id="@trip.TripId">
+          <div class="top"><span class="status-pill done">Hoàn thành</span><span class="mono" style="font-size:12.5px;color:var(--ink-faint)">@trip.DepartureTime.ToString("dd/MM/yyyy")</span></div>
+          <div class="route-strip">
+            <div class="pt"><div class="city">@trip.RouteFrom</div><div class="sub">@trip.DepartureTime.ToString("HH:mm")</div></div>
+            <div class="route-line"><div class="node start"></div><div class="node end"></div></div>
+            <div class="pt end"><div class="city">@trip.RouteTo</div><div class="sub">&nbsp;</div></div>
+          </div>
+          <div class="bottom">
+            <span style="font-size:12.5px;color:var(--ink-soft)">Thu nhập: @(Model.DoneIncome.ContainsKey(trip.TripId) ? Model.DoneIncome[trip.TripId].ToString("N0") : "0")đ</span>
+            <button class="btn btn-outline btn-sm" onclick="viewTripDetail(this)">Xem chi tiết</button>
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/common.js"></script>
+<script>
+  function switchDTab(tab){
+    ['d-upcoming','d-running','d-done'].forEach(t => document.getElementById('dtab-'+t).classList.toggle('hidden', t !== tab));
+    document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  }
+
+  function startTrip(btn){
+    const card = btn.closest('.trip-manage-card');
+    const tripId = card.dataset.tripId;
+
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Đang xử lý…';
+
+    fetch('start-trip.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trip_id: tripId })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (!data.ok) {
+          alert(data.message || 'Không thể bắt đầu chuyến.');
+          btn.disabled = false;
+          btn.textContent = originalText;
+          return;
+        }
+        location.reload();
+      })
+      .catch(() => {
+        alert('Lỗi kết nối, vui lòng thử lại.');
+        btn.disabled = false;
+        btn.textContent = originalText;
+      });
+  }
+
+  function completeTrip(btn){
+    const card = btn.closest('.trip-manage-card');
+    const tripId = card.dataset.tripId;
+
+    const confirmed = confirm('Xác nhận đã hoàn thành chuyến đi ' + tripId + '?\nSố tiền chuyến này sẽ được cộng vào thu nhập của bạn.');
+    if (!confirmed) return;
+
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Đang xử lý…';
+
+    fetch('complete-trip.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trip_id: tripId })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (!data.ok) {
+          alert(data.message || 'Không thể hoàn thành chuyến.');
+          btn.disabled = false;
+          btn.textContent = originalText;
+          return;
+        }
+        location.reload();
+      })
+      .catch(() => {
+        alert('Lỗi kết nối, vui lòng thử lại.');
+        btn.disabled = false;
+        btn.textContent = originalText;
+      });
+  }
+
+  function viewTripDetail(btn){
+    const card = btn.closest('.trip-manage-card');
+    const tripId = card.dataset.tripId;
+    alert('Xem chi tiết chuyến ' + tripId + ' (chưa có trang chi tiết).');
+  }
+</script>
+</body>
+</html>

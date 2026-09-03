@@ -1,0 +1,240 @@
+@page
+@model XeGhepApp.Pages.RutTienModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XeGhép — Tài xế — Rút tiền</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<style>
+  .withdraw-wrap{ max-width:520px; }
+  .balance-banner{ display:flex; justify-content:space-between; align-items:center; background:linear-gradient(135deg,#111827,#1f2937); color:#fff; border-radius:16px; padding:22px 24px; margin-bottom:20px; }
+  .balance-banner .lbl{ font-size:12.5px; opacity:.75; margin-bottom:6px; }
+  .balance-banner .val{ font-size:26px; font-weight:700; font-family:'IBM Plex Mono', monospace; }
+  .balance-banner .pending-note{ font-size:12px; opacity:.8; margin-top:6px; }
+  .quick-amounts{ display:flex; gap:8px; margin:10px 0 18px; flex-wrap:wrap; }
+  .quick-amounts button{ padding:8px 14px; border-radius:20px; border:1px solid var(--border,#d1d5db); background:#fff; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .quick-amounts button:hover{ border-color:var(--primary,#2563eb); color:var(--primary,#2563eb); }
+  #new-bank-fields{ display:none; margin-top:10px; padding:14px; background:var(--bg,#f5f6f8); border-radius:10px; }
+  .back-link{ display:inline-flex; align-items:center; gap:6px; font-size:13.5px; color:var(--ink-soft,#6b7280); text-decoration:none; margin-bottom:16px; }
+  .back-link:hover{ color:var(--primary,#2563eb); }
+  .sla-note{ display:flex; gap:8px; align-items:flex-start; background:#EFF6FF; color:#1D4ED8; border-radius:10px; padding:10px 12px; font-size:12.5px; margin-top:10px; }
+  .input-plain{ width:100%; padding:10px; border:1px solid var(--border,#d1d5db); border-radius:8px; box-sizing:border-box; font-family:inherit; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand"><span class="dot-route">X</span><div>XeGhép<small>TÀI XẾ</small></div></div>
+    <nav class="side-nav">
+      <a href="/Index"><span class="ic">🏠</span> Tổng quan</a>
+      <a href="/YeuCauDatCho">
+          <span class="ic">📥</span> Yêu cầu đặt chỗ 
+          @if(Model.PendingCount > 0){
+            <span class="badge-count">@Model.PendingCount</span>
+          }
+      </a>
+      <a href="/ChuyenCuaToi"><span class="ic">🧭</span> Chuyến của tôi</a>
+      <a href="/ThuNhap" class="active"><span class="ic">₫</span> Thu nhập</a>
+      <a href="/HoSo"><span class="ic">👤</span> Hồ sơ &amp; giấy tờ</a>
+    </nav>
+    <div class="sidebar-foot">
+        <div class="av">@(Model.Avatar ?? "U")</div>
+        <div><b>@Model.FullName</b><span>★ @Model.Rating.ToString("0.0") · Đã duyệt</span></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="view withdraw-wrap">
+      <a href="/ThuNhap" class="back-link">← Quay lại Thu nhập</a>
+
+      <div class="topbar">
+        <div><h1>Rút tiền</h1><p>Chuyển số dư khả dụng của bạn về tài khoản ngân hàng.</p></div>
+      </div>
+
+      @if (!string.IsNullOrEmpty(Model.ErrorMessage)) {
+        <div class="alert alert-error" style="padding:12px;border-radius:10px;background:var(--coral-dim,#fef2f2);color:var(--coral,#b91c1c);margin-bottom:16px;font-size:13.5px">@Model.ErrorMessage</div>
+      }
+
+      @if (!string.IsNullOrEmpty(Model.SuccessMessage)) {
+        <div class="alert alert-success" style="padding:12px;border-radius:10px;background:var(--green-dim,#f0fdf4);color:var(--green,#16a34a);margin-bottom:16px;font-size:13.5px">@Model.SuccessMessage</div>
+      }
+
+      <div class="balance-banner">
+        <div>
+          <div class="lbl">Số dư khả dụng</div>
+          <div class="val" id="balance-val">@Model.AvailableToWithdrawDisplay.ToString("N0")đ</div>
+          @if (Model.PendingWithdrawSum > 0) {
+            <div class="pending-note">Đang chờ Admin duyệt: @Model.PendingWithdrawSum.ToString("N0")đ</div>
+          }
+        </div>
+        <div style="font-size:26px">💵</div>
+      </div>
+
+      <div class="card">
+        <div class="list-title">Thông tin rút tiền</div>
+
+        <form method="POST" action="" id="withdraw-form" onsubmit="return false;">
+          <div class="field" style="margin-bottom:6px">
+            <label>Số tiền muốn rút</label>
+            <div class="input">₫<input type="number" name="amount" id="withdraw-amount" min="@Model.MinWithdrawAmountInt" step="10000" placeholder="VD: 500000" value="@(Model.PostedAmount > 0 ? Model.PostedAmount.ToString("0") : "")" required></div>
+          </div>
+          <div class="quick-amounts">
+            <button type="button" onclick="setAmount(200000)">200.000đ</button>
+            <button type="button" onclick="setAmount(500000)">500.000đ</button>
+            <button type="button" onclick="setAmount(1000000)">1.000.000đ</button>
+            <button type="button" onclick="setAmount(@((int)Model.AvailableToWithdrawDisplay))">Rút tất cả</button>
+          </div>
+
+          <div class="field">
+            <label>Tài khoản nhận tiền</label>
+            <div class="input">🏦
+              <select name="bank_choice" id="bank_choice" onchange="toggleNewBankFields()">
+                <option value="Vietcombank ****4821" @(Model.PostedBankChoice == "Vietcombank ****4821" ? "selected" : "")>Vietcombank ****4821</option>
+                <option value="MB Bank ****7710" @(Model.PostedBankChoice == "MB Bank ****7710" ? "selected" : "")>MB Bank ****7710</option>
+                <option value="new" @(Model.PostedBankChoice == "new" ? "selected" : "")>+ Thêm tài khoản ngân hàng khác</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="new-bank-fields">
+            <div class="field" style="margin-bottom:12px">
+              <label>Tên ngân hàng</label>
+              <input type="text" name="new_bank_name" placeholder="VD: Techcombank" class="input-plain" value="@Model.PostedNewBankName">
+            </div>
+            <div class="field" style="margin-bottom:12px">
+              <label>Số tài khoản</label>
+              <input type="text" name="new_bank_number" placeholder="VD: 0123456789" class="input-plain" value="@Model.PostedNewBankNumber">
+            </div>
+            <div class="field">
+              <label>Chủ tài khoản</label>
+              <input type="text" name="new_bank_holder" placeholder="VD: NGUYEN VAN A" class="input-plain" value="@Model.PostedNewBankHolder">
+            </div>
+          </div>
+
+          <input type="hidden" name="login_password" id="login_password_hidden">
+
+          <button type="button" class="btn btn-primary btn-block" style="margin-top:18px;padding:12px;width:100%" onclick="openPasswordConfirm()">Xác nhận rút tiền</button>
+
+          <div class="sla-note">
+            ⏱️ <span>Yêu cầu sẽ được Admin xét duyệt trong tối đa <b>@Model.MaxProcessingHoursInt giờ</b>. Số dư ví chỉ bị trừ sau khi tiền đã chuyển thành công vào tài khoản ngân hàng của bạn.</span>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="list-title">Yêu cầu rút tiền gần đây</div>
+        <table>
+          <thead><tr><th>Ngày yêu cầu</th><th>Số tiền</th><th>Ngân hàng nhận</th><th>Trạng thái</th></tr></thead>
+          <tbody>
+            @foreach(var wd in Model.RecentWithdrawals) {
+            <tr>
+                <td class="mono">@wd.CreatedAt.ToString("dd/MM")</td>
+                <td class="mono">@wd.Amount.ToString("N0")đ</td>
+                <td>@wd.BankInfo</td>
+                <td>@Html.Raw(XeGhepApp.Pages.RutTienModel.GetWithdrawStatusHtml(wd.Status))</td>
+            </tr>
+            }
+            @if(!Model.RecentWithdrawals.Any()) {
+            <tr><td colspan="4" style="text-align:center;color:var(--ink-soft)">Chưa có yêu cầu rút tiền nào.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- MODAL: XÁC NHẬN MẬT KHẨU ĐĂNG NHẬP -->
+<div class="modal-overlay hidden" id="modal-confirm-password">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-head"><h3 style="font-size:18px">Xác nhận mật khẩu</h3><button type="button" onclick="closeModal('modal-confirm-password')">✕</button></div>
+    <p class="sub">Vui lòng nhập mật khẩu đăng nhập tài khoản tài xế để xác nhận yêu cầu rút <b id="confirm-amount-display" class="mono"></b>.</p>
+    <div class="field">
+      <label>Mật khẩu đăng nhập</label>
+      <input type="password" id="confirm-password-input" placeholder="Nhập mật khẩu tài khoản" class="input-plain">
+    </div>
+    <div id="confirm-password-error" style="display:none;padding:8px;border-radius:8px;background:var(--coral-dim,#fef2f2);color:var(--coral,#b91c1c);font-size:12.5px;margin-top:8px"></div>
+    <button type="button" class="btn btn-primary btn-block" style="margin-top:16px;padding:12px;width:100%" onclick="confirmWithdrawSubmit()">Xác nhận &amp; Gửi yêu cầu</button>
+  </div>
+</div>
+
+<script src="/assets/common.js"></script>
+<script>
+  const availableBalance = @Model.AvailableToWithdrawDisplay;
+
+  function setAmount(value) {
+      document.getElementById('withdraw-amount').value = value;
+  }
+
+  function toggleNewBankFields() {
+      const isNew = document.getElementById('bank_choice').value === 'new';
+      document.getElementById('new-bank-fields').style.display = isNew ? 'block' : 'none';
+  }
+  toggleNewBankFields();
+
+  function validateWithdrawForm() {
+      const amount = Number(document.getElementById('withdraw-amount').value || 0);
+      if (amount <= 0) { alert('Vui lòng nhập số tiền hợp lệ.'); return false; }
+      if (amount > availableBalance) { alert('Số tiền vượt quá số dư khả dụng.'); return false; }
+
+      if (document.getElementById('bank_choice').value === 'new') {
+          const name = document.querySelector('[name="new_bank_name"]').value.trim();
+          const number = document.querySelector('[name="new_bank_number"]').value.trim();
+          const holder = document.querySelector('[name="new_bank_holder"]').value.trim();
+          if (!name || !number || !holder) {
+              alert('Vui lòng nhập đầy đủ thông tin tài khoản ngân hàng mới.');
+              return false;
+          }
+      }
+      return true;
+  }
+
+  function openPasswordConfirm() {
+      if (!validateWithdrawForm()) return;
+      const amount = Number(document.getElementById('withdraw-amount').value || 0);
+      document.getElementById('confirm-amount-display').textContent = amount.toLocaleString('vi-VN') + 'đ';
+      document.getElementById('confirm-password-input').value = '';
+      document.getElementById('confirm-password-error').style.display = 'none';
+      
+      // Bật modal
+      document.getElementById('modal-confirm-password').classList.remove('hidden');
+      setTimeout(() => document.getElementById('confirm-password-input').focus(), 100);
+  }
+
+  function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+  }
+
+  function confirmWithdrawSubmit() {
+      const pw = document.getElementById('confirm-password-input').value;
+      if (!pw) {
+          document.getElementById('confirm-password-error').textContent = 'Vui lòng nhập mật khẩu.';
+          document.getElementById('confirm-password-error').style.display = 'block';
+          return;
+      }
+      document.getElementById('login_password_hidden').value = pw;
+      document.getElementById('withdraw-form').submit();
+  }
+
+  @if (Model.PasswordError) {
+  <text>
+  // Server báo sai mật khẩu -> tự mở lại popup để nhập lại
+  document.addEventListener('DOMContentLoaded', function () {
+      const amount = Number(document.getElementById('withdraw-amount').value || 0);
+      document.getElementById('confirm-amount-display').textContent = amount.toLocaleString('vi-VN') + 'đ';
+      document.getElementById('confirm-password-error').textContent = "@Html.Raw(Model.ErrorMessage)";
+      document.getElementById('confirm-password-error').style.display = 'block';
+      document.getElementById('modal-confirm-password').classList.remove('hidden');
+  });
+  </text>
+  }
+</script>
+</body>
+</html>

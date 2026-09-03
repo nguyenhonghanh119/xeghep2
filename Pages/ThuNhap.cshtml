@@ -1,0 +1,109 @@
+@page
+@model XeGhepApp.Pages.ThuNhapModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XeGhép — Tài xế — Thu nhập</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand"><span class="dot-route">X</span><div>XeGhép<small>TÀI XẾ</small></div></div>
+    <nav class="side-nav">
+      <a href="/Index"><span class="ic">🏠</span> Tổng quan</a>
+      <a href="/YeuCauDatCho">
+          <span class="ic">📥</span> Yêu cầu đặt chỗ 
+          @if(Model.PendingCount > 0){
+            <span class="badge-count">@Model.PendingCount</span>
+          }
+      </a>
+      <a href="/ChuyenCuaToi"><span class="ic">🧭</span> Chuyến của tôi</a>
+      <a href="/ThuNhap" class="active"><span class="ic">₫</span> Thu nhập</a>
+      <a href="/HoSo"><span class="ic">👤</span> Hồ sơ &amp; giấy tờ</a>
+    </nav>
+    <div class="sidebar-foot">
+        <div class="av">@(Model.Avatar ?? "U")</div>
+        <div><b>@Model.FullName</b><span>★ @Model.Rating.ToString("0.0") · Đã duyệt</span></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="view" id="view-earnings">
+      <div class="topbar">
+        <div><h1>Thu nhập</h1><p>Theo dõi doanh thu, hoa hồng và rút tiền về tài khoản.</p></div>
+        <a href="/RutTien" class="btn btn-primary">💵 Rút tiền</a>
+      </div>
+
+      <div class="earn-summary">
+        <div class="stat-card">
+          <div class="lbl">Số dư khả dụng</div>
+          <div class="val mono" id="balance-val">@Model.WalletBalance.ToString("N0")đ</div>
+          <div class="delta">Có thể rút bất kỳ lúc nào</div>
+          <a href="/RutTien" class="btn btn-outline btn-sm" style="margin-top:10px;display:inline-block;text-align:center;text-decoration:none">Rút tiền ngay</a>
+        </div>
+        <div class="stat-card">
+            <div class="lbl">Thu nhập tháng @DateTime.Now.ToString("MM")</div>
+            <div class="val mono" id="stat-month-earn">@Model.MonthIncome.ToString("N0")đ</div>
+            <div class="delta">Hoa hồng nền tảng @Model.CommissionRate.ToString("0.##")%</div>
+        </div>
+        <div class="stat-card">
+            <div class="lbl">Tổng chuyến đã chạy</div>
+            <div class="val" id="stat-total-trips">@Model.TotalTrips</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="list-title">Lịch sử chuyến</div>
+        <table>
+          <thead><tr><th>Ngày</th><th>Tuyến</th><th>Khách</th><th>Doanh thu</th><th>Hoa hồng</th><th>Thực nhận</th></tr></thead>
+          <tbody id="earnings-history">
+            @foreach(var txn in Model.Transactions){
+            <tr>
+                <td class="mono">@txn.CreatedAt.ToString("dd/MM")</td>
+                <td>@txn.RouteFrom → @txn.RouteTo</td>
+                <td>@txn.TotalPax</td>
+                <td class="mono">@txn.TotalAmount.ToString("N0")đ</td>
+                <td class="mono">−@txn.CommissionAmount.ToString("N0")đ</td>
+                <td class="mono" style="font-weight:600">@txn.DriverReceive.ToString("N0")đ</td>
+            </tr>
+            }
+            @if(!Model.Transactions.Any()){
+            <tr><td colspan="6" style="text-align:center;color:var(--ink-soft)">Chưa có dữ liệu chuyến đi.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="list-title">Lịch sử rút tiền</div>
+        <table>
+          <thead><tr><th>Ngày yêu cầu</th><th>Số tiền</th><th>Ngân hàng nhận</th><th>Trạng thái</th></tr></thead>
+          <tbody id="withdraw-history">
+            @foreach(var wd in Model.Withdrawals){
+            <tr>
+                <td class="mono">@wd.CreatedAt.ToString("dd/MM")</td>
+                <td class="mono">@wd.Amount.ToString("N0")đ</td>
+                <td>@wd.BankInfo</td>
+                <td>@Html.Raw(XeGhepApp.Pages.ThuNhapModel.GetWithdrawStatusHtml(wd.Status))</td>
+            </tr>
+            }
+            @if(!Model.Withdrawals.Any()){
+            <tr><td colspan="4" style="text-align:center;color:var(--ink-soft)">Chưa có yêu cầu rút tiền nào.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="/assets/common.js"></script>
+</body>
+</html>
