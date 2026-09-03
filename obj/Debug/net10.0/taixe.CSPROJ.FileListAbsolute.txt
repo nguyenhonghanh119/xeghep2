@@ -199,7 +199,6 @@ C:\xampp\htdocs\dat xe ghep\appdatxe\taixe cs\obj\Debug\net10.0\rjimswa.dswa.cac
 C:\xampp\htdocs\dat xe ghep\appdatxe\taixe cs\obj\Debug\net10.0\rjsmrazor.dswa.cache.json
 C:\xampp\htdocs\dat xe ghep\appdatxe\taixe cs\obj\Debug\net10.0\rjsmcshtml.dswa.cache.json
 C:\xampp\htdocs\dat xe ghep\appdatxe\taixe cs\obj\Debug\net10.0\scopedcss\bundle\taixe.styles.css
-C:\xampp\htdocs\dat xe ghep\appdatxe\taixe cs\obj\Debug\net10.0\compressed\xb6e77mey2-{0}-ndq3clc21o-ndq3clc21o.gz
 C:\xampp\htdocs\dat xe ghep\appdatxe\taixe cs\obj\Debug\net10.0\staticwebassets.build.json
 C:\xampp\htdocs\dat xe ghep\appdatxe\taixe cs\obj\Debug\net10.0\staticwebassets.build.json.cache
 C:\xampp\htdocs\dat xe ghep\appdatxe\taixe cs\obj\Debug\net10.0\staticwebassets.development.json
@@ -211,3 +210,4 @@ C:\xampp\htdocs\dat xe ghep\appdatxe\taixe cs\obj\Debug\net10.0\refint\taixe.dll
 C:\xampp\htdocs\dat xe ghep\appdatxe\taixe cs\obj\Debug\net10.0\taixe.pdb
 C:\xampp\htdocs\dat xe ghep\appdatxe\taixe cs\obj\Debug\net10.0\taixe.genruntimeconfig.cache
 C:\xampp\htdocs\dat xe ghep\appdatxe\taixe cs\obj\Debug\net10.0\ref\taixe.dll
+C:\xampp\htdocs\dat xe ghep\appdatxe\taixe cs\obj\Debug\net10.0\compressed\xb6e77mey2-{0}-ndq3clc21o-ndq3clc21o.gz
