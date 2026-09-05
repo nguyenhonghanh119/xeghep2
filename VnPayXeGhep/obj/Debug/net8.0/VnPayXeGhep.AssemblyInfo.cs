@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("VnPayXeGhep")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+924f2591fe1fd67117c7da39d16eaeea809a8677")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+54bd6913662c3f36328e9d40ed907d799e961492")]
 [assembly: System.Reflection.AssemblyProductAttribute("VnPayXeGhep")]
 [assembly: System.Reflection.AssemblyTitleAttribute("VnPayXeGhep")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

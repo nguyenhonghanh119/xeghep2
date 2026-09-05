@@ -103,27 +103,6 @@ public class PassengerService : IPassengerService
         if (trip == null)
             return new BookingCreateResult { Success = false, Error = "Không tìm thấy chuyến đi." };
 
-        // Chỉ cho phép đặt chuyến mới khi KHÔNG còn chuyến nào đang "dang dở" (chưa hoàn thành).
-        // "Dang dở" = booking chưa bị huỷ/từ chối VÀ chuyến tương ứng chưa "done" (đang chờ duyệt,
-        // đã duyệt, hoặc đang chạy). Chỉ khi chuyến đã "done" hoặc booking đã "cancelled"/"rejected"
-        // thì mới coi là xong, cho phép đặt tiếp.
-        var hasOngoingBooking = await _db.Bookings
-            .Include(b => b.Trip)
-            .AnyAsync(b => b.PassengerId == passengerId
-                && b.Status != "cancelled"
-                && b.Status != "rejected"
-                && b.Trip != null
-                && b.Trip.Status != "done"
-                && b.Trip.Status != "cancelled");
-        if (hasOngoingBooking)
-        {
-            return new BookingCreateResult
-            {
-                Success = false,
-                Error = "Bạn đang có một chuyến chưa hoàn thành. Vui lòng chờ chuyến đó hoàn thành (hoặc huỷ) trước khi đặt chuyến mới."
-            };
-        }
-
         var seats = Math.Max(1, req.Seats);
         if (trip.AvailableSeats < seats)
             return new BookingCreateResult { Success = false, Error = "Chuyến không còn đủ ghế trống." };
@@ -387,6 +366,17 @@ public class PassengerService : IPassengerService
         if (vnpResponseCode != "00")
         {
             booking.PaymentStatus = "pending";
+
+            // Thanh toán thất bại: hoàn lại ghế đã trừ lúc tạo booking, tránh mất ghế oan cho khách.
+            // Chỉ hoàn 1 lần — nếu VNPay gọi lại (return + IPN) cho cùng giao dịch, booking đã ở trạng thái
+            // rejected thì bỏ qua, không cộng ghế trùng lặp.
+            if (booking.Status != "rejected" && booking.Status != "cancelled")
+            {
+                booking.Status = "rejected";
+                if (booking.Trip != null)
+                    booking.Trip.AvailableSeats += booking.Seats;
+            }
+
             await _db.SaveChangesAsync();
             return (false, "Thanh toán không thành công.");
         }

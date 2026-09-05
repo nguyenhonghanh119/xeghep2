@@ -2707,11 +2707,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "F:\\đặt xe ghép\\VnPayXeGhep-CSharp (2)\\VnPayXeGhep\\VnPayXeGhep.csproj",
+      "projectUniqueName": "F:\\bài tập lớn\\đặt xe ghép\\VnPayXeGhep-CSharp (2)\\VnPayXeGhep\\VnPayXeGhep.csproj",
       "projectName": "VnPayXeGhep",
-      "projectPath": "F:\\đặt xe ghép\\VnPayXeGhep-CSharp (2)\\VnPayXeGhep\\VnPayXeGhep.csproj",
+      "projectPath": "F:\\bài tập lớn\\đặt xe ghép\\VnPayXeGhep-CSharp (2)\\VnPayXeGhep\\VnPayXeGhep.csproj",
       "packagesPath": "C:\\Users\\Acer\\.nuget\\packages\\",
-      "outputPath": "F:\\đặt xe ghép\\VnPayXeGhep-CSharp (2)\\VnPayXeGhep\\obj\\",
+      "outputPath": "F:\\bài tập lớn\\đặt xe ghép\\VnPayXeGhep-CSharp (2)\\VnPayXeGhep\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\Acer\\AppData\\Roaming\\NuGet\\NuGet.Config",
