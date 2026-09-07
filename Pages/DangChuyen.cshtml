@@ -1,0 +1,102 @@
+@page "/DangChuyen"
+@model XeGhepAdmin.Pages.DangChuyenModel
+
+<div class="view">
+  <div class="topbar">
+    <div><h1>Đăng chuyến &amp; Giá</h1><p>Đăng tuyến cố định mới — giá đề xuất hiển thị ngay bên cạnh, dựa trên cấu hình giá mặc định.</p></div>
+  </div>
+
+  <div class="card">
+    <div class="list-title">Cấu hình giá mặc định</div>
+    <div class="form-grid">
+      <div class="field"><label>Giá mỗi km / ghế</label><div class="input"><input type="number" id="cfg-per-km" value="@Model.GiaMacDinh.GiaMoiKmMoiGhe">đ</div></div>
+      <div class="field"><label>Phí mở cuốc</label><div class="input"><input type="number" id="cfg-open-fee" value="@Model.GiaMacDinh.PhiMoCuoc">đ</div></div>
+      <div class="field"><label>Giá tối thiểu / chuyến</label><div class="input"><input type="number" id="cfg-min-fee" value="@Model.GiaMacDinh.GiaToiThieuMoiChuyen">đ</div></div>
+      <div class="field"><label>Hệ số giờ cao điểm</label><div class="input"><input type="number" id="cfg-peak" value="@Model.GiaMacDinh.HeSoGioCaoDiem" step="0.1">x</div></div>
+    </div>
+    <button class="btn btn-primary" style="margin-top:16px" onclick="alert('Đã lưu cấu hình giá mặc định (demo — cần nối API PUT /api/admin/pricing).')">Lưu cấu hình giá</button>
+  </div>
+
+  <div class="card">
+    <div class="list-title">Đăng chuyến mới</div>
+    <div class="post-layout">
+      <div>
+        <div class="form-grid">
+          <div class="field"><label>Điểm đi</label><div class="input"><input id="new-from" placeholder="Hà Nội"></div></div>
+          <div class="field"><label>Điểm đến</label><div class="input"><input id="new-to" placeholder="Ninh Bình"></div></div>
+          <div class="field"><label>Khoảng cách (km)</label><div class="input"><input type="number" id="new-distance" oninput="tinhGiaDeXuat()" placeholder="95"></div></div>
+          <div class="field"><label>Giá riêng (bỏ trống = dùng giá đề xuất)</label><div class="input"><input type="number" id="new-price-override" oninput="tinhGiaDeXuat()">đ</div></div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:16px" onclick="dangChuyen()">+ Đăng chuyến</button>
+      </div>
+      <div class="preview-sticky">
+        <div class="preview-label">Giá đề xuất</div>
+        <div class="card" style="padding:16px">
+          <div class="summary-box">
+            <div class="summary-row"><span>Khoảng cách</span><span class="mono" id="prev-distance">— km</span></div>
+            <div class="summary-row"><span>Đơn giá / km / ghế</span><span class="mono">@Model.GiaMacDinh.GiaMoiKmMoiGhe.ToString("N0")đ</span></div>
+            <div class="summary-row"><span>Phí mở cuốc</span><span class="mono">@Model.GiaMacDinh.PhiMoCuoc.ToString("N0")đ</span></div>
+            <div class="summary-row total"><span>Giá / ghế đề xuất</span><span class="mono" id="prev-total">—</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="list-title">Danh sách tuyến &amp; giá</div>
+    <table>
+      <thead><tr><th>Tuyến</th><th>Khoảng cách</th><th>Giá / ghế</th><th>Số chuyến đã chạy</th><th>Cập nhật lần cuối</th><th>Trạng thái</th><th></th></tr></thead>
+      <tbody>
+        @foreach (var t in Model.Tuyens)
+        {
+          <tr>
+            <td style="font-weight:600">@t.DiemDi → @t.DiemDen</td>
+            <td class="mono">@t.KhoangCachKm km</td>
+            <td class="mono">@Model.GiaHienThi(t)</td>
+            <td>@t.SoChuyenDaChay</td>
+            <td class="mono">@t.CapNhatLanCuoi.ToString("dd/MM/yyyy")</td>
+            <td><span class="status-pill @(t.TrangThai == TrangThai.DangHoatDong ? "approved" : "locked")">@(t.TrangThai == TrangThai.DangHoatDong ? "Đang mở" : "Tạm khoá")</span></td>
+            <td><button class="btn btn-outline btn-sm">Sửa</button> <button class="btn btn-coral btn-sm">Xoá</button></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+@section Scripts {
+<script>
+  function tinhGiaDeXuat(){
+    const perKm = Number(document.getElementById('cfg-per-km').value) || 0;
+    const openFee = Number(document.getElementById('cfg-open-fee').value) || 0;
+    const minFee = Number(document.getElementById('cfg-min-fee').value) || 0;
+    const distance = Number(document.getElementById('new-distance').value) || 0;
+    const override_ = document.getElementById('new-price-override').value;
+
+    document.getElementById('prev-distance').textContent = distance ? (distance + ' km') : '— km';
+
+    if (override_){
+      document.getElementById('prev-total').textContent = formatVnd(Number(override_));
+      return;
+    }
+    if (!distance){
+      document.getElementById('prev-total').textContent = '—';
+      return;
+    }
+    const gia = Math.max(distance * perKm + openFee, minFee);
+    document.getElementById('prev-total').textContent = formatVnd(gia);
+  }
+
+  function dangChuyen(){
+    const from = document.getElementById('new-from').value.trim();
+    const to = document.getElementById('new-to').value.trim();
+    const distance = document.getElementById('new-distance').value;
+    if (!from || !to || !distance){ alert('Vui lòng nhập đủ điểm đi, điểm đến và khoảng cách.'); return; }
+    // TODO BACKEND: await fetch('/api/admin/routes', {method:'POST', body: JSON.stringify({from,to,distance,...})});
+    alert('Đã đăng chuyến ' + from + ' → ' + to + ' (demo — cần nối API).');
+  }
+
+  document.addEventListener('DOMContentLoaded', tinhGiaDeXuat);
+</script>
+}

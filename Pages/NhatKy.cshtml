@@ -1,0 +1,22 @@
+@page "/NhatKy"
+@model XeGhepAdmin.Pages.NhatKyModel
+
+<div class="view">
+  <div class="topbar"><div><h1>Nhật ký hoạt động</h1><p>Lịch sử thao tác của quản trị viên và hệ thống tự động trên nền tảng.</p></div></div>
+
+  <div class="filter-bar">
+    <div class="input">🔍<input placeholder="Tìm theo người thực hiện hoặc hành động…"></div>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead><tr><th>Thời gian</th><th>Người thực hiện</th><th>Hành động</th><th>Đối tượng</th></tr></thead>
+      <tbody>
+        @foreach (var l in Model.Logs)
+        {
+          <tr><td class="mono">@l.ThoiGian.ToString("dd/MM HH:mm")</td><td>@l.NguoiThucHien</td><td>@l.HanhDong</td><td class="mono">@(l.DoiTuong ?? "—")</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

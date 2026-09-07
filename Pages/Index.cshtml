@@ -1,0 +1,56 @@
+@page "/"
+@model XeGhepAdmin.Pages.IndexModel
+
+<div class="view" id="view-admin-overview">
+  <div class="topbar">
+    <div><h1>Dashboard</h1><p>@DateTime.Now.ToString("dddd, dd/MM/yyyy", new System.Globalization.CultureInfo("vi-VN"))</p></div>
+    <a class="btn btn-primary" href="/ThanhToan">💳 Xem thanh toán</a>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-card"><div class="lbl">Tổng doanh thu tháng 08</div><div class="val mono">86.400.000đ</div><div class="delta">+18% so với tháng trước</div></div>
+    <div class="stat-card"><div class="lbl">Hoa hồng nền tảng thu được</div><div class="val mono">8.640.000đ</div><div class="delta">Tỉ lệ hiện tại: 10%</div></div>
+    <div class="stat-card"><div class="lbl">Chuyến hoàn thành</div><div class="val">742</div><div class="delta">Tháng 08/2026</div></div>
+    <div class="stat-card"><div class="lbl">Tài xế đang hoạt động</div><div class="val">@Model.TaiXeDangHoatDong</div><div class="delta down">@Model.SoHoSoChoDuyet hồ sơ chờ duyệt</div></div>
+  </div>
+
+  <div class="section-block">
+    <div class="card">
+      <div class="list-title">Doanh thu 7 ngày gần nhất</div>
+      <div class="chart-legend"><span><i style="background:var(--amber)"></i> Tổng doanh thu (GMV)</span><span><i style="background:var(--navy-2)"></i> Hoa hồng nền tảng</span></div>
+      <div class="bar-chart">
+        <div class="bar"><div class="fill" style="height:62%"></div><div class="fill alt" style="height:8%"></div><span class="lbl">13/08</span></div>
+        <div class="bar"><div class="fill" style="height:48%"></div><div class="fill alt" style="height:6%"></div><span class="lbl">14/08</span></div>
+        <div class="bar"><div class="fill" style="height:70%"></div><div class="fill alt" style="height:9%"></div><span class="lbl">15/08</span></div>
+        <div class="bar"><div class="fill" style="height:55%"></div><div class="fill alt" style="height:7%"></div><span class="lbl">16/08</span></div>
+        <div class="bar"><div class="fill" style="height:88%"></div><div class="fill alt" style="height:11%"></div><span class="lbl">17/08</span></div>
+        <div class="bar"><div class="fill" style="height:95%"></div><div class="fill alt" style="height:12%"></div><span class="lbl">18/08</span></div>
+        <div class="bar"><div class="fill" style="height:40%"></div><div class="fill alt" style="height:5%"></div><span class="lbl">19/08</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="list-title">Hoạt động gần đây</div>
+      <div id="activity-list">
+        @foreach (var a in Model.HoatDongGanDay)
+        {
+          <div class="activity-item">
+            <div class="ic">🕒</div>
+            <div><b>@a.HanhDong@(a.DoiTuong != null ? $" — {a.DoiTuong}" : "")</b><span>@a.NguoiThucHien · @a.ThoiGian.ToString("dd/MM HH:mm")</span></div>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <div class="list-title">Tài xế chờ duyệt hồ sơ</div>
+    @foreach (var d in Model.TaiXeChoDuyet)
+    {
+      <div class="admin-row">
+        <div class="av">@d.AnhDaiDien</div>
+        <div class="meta"><b>@d.HoTen</b><div class="sub">@d.Vehicle.LoaiXe · @d.Vehicle.BienSo · Nộp hồ sơ @d.NgayNopHoSo?.ToString("dd/MM/yyyy")</div></div>
+        <div class="actions"><a class="btn btn-outline btn-sm" href="/TaiXe">Xem hồ sơ</a></div>
+      </div>
+    }
+  </div>
+</div>

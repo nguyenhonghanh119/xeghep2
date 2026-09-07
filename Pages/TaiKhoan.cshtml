@@ -1,0 +1,33 @@
+@page "/TaiKhoan"
+@model XeGhepAdmin.Pages.TaiKhoanModel
+
+<div class="view">
+  <div class="topbar">
+    <div><h1>Quản lý tài khoản</h1><p>Tài khoản khách hàng &amp; tài xế được hệ thống tự động tạo khi đăng ký thành công qua app — không cần admin thao tác thủ công.</p></div>
+  </div>
+
+  <div class="stat-row" style="grid-template-columns:repeat(2,1fr)">
+    <div class="stat-card"><div class="lbl">Khách hàng tự đăng ký (mới)</div><div class="val">@Model.TongKhachHangMoi</div><div class="delta">Tự động tạo thành công</div></div>
+    <div class="stat-card"><div class="lbl">Tài xế tự đăng ký (mới)</div><div class="val">@Model.TongTaiXeMoi</div><div class="delta">Hồ sơ xe vẫn cần duyệt ở mục Tài xế</div></div>
+  </div>
+
+  <div class="card">
+    <div class="list-title">Tài khoản vừa được tạo tự động</div>
+    <table>
+      <thead><tr><th>Mã</th><th>Loại</th><th>Họ tên</th><th>SĐT</th><th>Thời gian tạo</th><th>Trạng thái</th></tr></thead>
+      <tbody>
+        @foreach (var t in Model.DanhSach)
+        {
+          <tr>
+            <td class="mono">@t.MaThamChieu</td>
+            <td>@t.Loai</td>
+            <td style="font-weight:600">@t.HoTen</td>
+            <td class="mono">@t.SoDienThoai</td>
+            <td class="mono">@t.ThoiGianTao.ToString("dd/MM/yyyy HH:mm")</td>
+            <td><span class="status-pill approved">@(t.TaoThanhCong ? "Tạo thành công" : "Lỗi tạo tài khoản")</span></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

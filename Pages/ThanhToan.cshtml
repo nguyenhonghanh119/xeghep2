@@ -1,0 +1,117 @@
+@page "/ThanhToan"
+@model XeGhepAdmin.Pages.ThanhToanModel
+
+<div class="view" id="view-admin-transactions">
+  <div class="topbar"><div><h1>Thanh toán</h1><p>Theo dõi doanh thu, giao dịch, hoa hồng — rút tiền tài xế được xử lý &amp; chuyển khoản hoàn toàn tự động.</p></div></div>
+
+  <div class="card">
+    <div class="list-title">Cài đặt hoa hồng nền tảng</div>
+    <div class="commission-card">
+      <div class="set">
+        <span style="font-size:13.5px;color:var(--ink-soft)">Tỉ lệ hoa hồng áp dụng cho mọi chuyến</span>
+        <div class="input"><input type="number" id="commission-rate" value="@Model.HoaHong.TiLePhanTram" min="0" max="50" step="1">%</div>
+      </div>
+      <button class="btn btn-primary" onclick="saveCommission()">Lưu cài đặt</button>
+    </div>
+    <div class="settings-row">
+      <div class="t"><b>Tự động cộng tiền vào ví tài xế</b><span>Khi khách thanh toán trực tuyến thành công, hệ thống tự động trích hoa hồng và chuyển phần còn lại vào số dư khả dụng của tài xế ngay lập tức.</span></div>
+      <label class="switch"><input type="checkbox" id="auto-payout-toggle" checked="@Model.HoaHong.TuDongCongViTaiXe" onchange="toggleAutoPayout()"><span class="slider"></span></label>
+    </div>
+    <div class="settings-row">
+      <div class="t"><b>Rút tiền tự động cho tài xế</b><span>Khi tài xế yêu cầu rút tiền, hệ thống tự động duyệt và chuyển khoản ngay — không cần admin bấm duyệt thủ công.</span></div>
+      <label class="switch"><input type="checkbox" id="auto-withdraw-toggle" checked="@Model.HoaHong.TuDongDuyetRutTien" onchange="toggleAutoWithdraw()"><span class="slider"></span></label>
+    </div>
+    <div class="settings-row">
+      <div class="t"><b>Hạn mức tự động duyệt / lần rút</b><span>Yêu cầu vượt mức này sẽ tạm giữ lại để admin xem lại thủ công, tránh rủi ro chuyển nhầm số tiền lớn.</span></div>
+      <div class="input" style="width:160px"><input type="number" id="auto-withdraw-limit" value="@Model.HoaHong.HanMucTuDongDuyet">đ</div>
+    </div>
+    <div class="settings-row">
+      <div class="t"><b>Đối soát hoa hồng cho thanh toán tiền mặt</b><span>Hoa hồng của các chuyến trả tiền mặt sẽ được tự động trừ vào lần rút tiền tiếp theo của tài xế.</span></div>
+      <label class="switch"><input type="checkbox" checked="@Model.HoaHong.DoiSoatTienMatTuDong"><span class="slider"></span></label>
+    </div>
+  </div>
+
+  <div class="stat-row" style="margin-top:16px">
+    <div class="stat-card"><div class="lbl">Tổng doanh thu (GMV) tháng 08</div><div class="val mono">@Model.TongGmv.ToString("N0")đ</div></div>
+    <div class="stat-card"><div class="lbl">Hoa hồng thu được</div><div class="val mono" id="stat-commission-total">@Model.TongHoaHong.ToString("N0")đ</div></div>
+    <div class="stat-card"><div class="lbl">Đã chuyển tự động cho tài xế</div><div class="val mono">@Model.DaChuyenTuDong.ToString("N0")đ</div></div>
+    <div class="stat-card"><div class="lbl">Chờ xem lại thủ công (vượt hạn mức)</div><div class="val mono">@Model.ChoXemLaiThuCong.ToString("N0")đ</div></div>
+  </div>
+
+  <div class="card">
+    <div class="list-title">Giao dịch thanh toán gần đây</div>
+    <table>
+      <thead><tr><th>Ngày</th><th>Chuyến</th><th>Khách</th><th>Tài xế</th><th>P.thức</th><th>Tổng tiền</th><th>Hoa hồng</th><th>Tài xế nhận</th><th>Trạng thái</th></tr></thead>
+      <tbody id="transactions-table">
+        @foreach (var g in Model.GiaoDichs)
+        {
+          <tr>
+            <td class="mono">@g.ThoiGian.ToString("dd/MM HH:mm")</td><td class="mono">@g.MaChuyen</td><td>@g.Khach</td><td>@g.TaiXe</td>
+            <td><span class="method-tag @(g.PhuongThuc == PhuongThucThanhToan.Online ? "online" : "cash")">@(g.PhuongThuc == PhuongThucThanhToan.Online ? "Online" : "Tiền mặt")</span></td>
+            <td class="mono">@g.TongTien.ToString("N0")đ</td><td class="mono">−@g.HoaHong.ToString("N0")đ</td>
+            <td class="mono" style="font-weight:600">@(g.TaiXeNhan.HasValue ? g.TaiXeNhan.Value.ToString("N0") + "đ" : "—")</td>
+            <td>
+              @{
+                var pill = g.TrangThaiHienThi switch {
+                  "Đã cộng vào ví tài xế" => "approved",
+                  "Chờ đối soát tiền mặt" => "pending",
+                  _ => "cancelled"
+                };
+              }
+              <span class="status-pill @pill">@g.TrangThaiHienThi</span>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="list-title">Lịch sử rút tiền của tài xế (tự động xử lý)</div>
+    <div id="withdrawals-list">
+      @foreach (var w in Model.Withdrawals)
+      {
+        <div class="admin-row" data-withdraw-id="@w.MaYeuCau">
+          <div class="av">@(w.TaiXe.Trim().Split(' ').Last()[..1].ToUpper())</div>
+          <div class="meta"><b>@w.TaiXe</b><div class="sub">@w.NganHang · Yêu cầu lúc @w.ThoiGianYeuCau.ToString("dd/MM/yyyy HH:mm")</div></div>
+          <div class="stats"><div><b class="mono">@w.SoTien.ToString("N0")đ</b>Số tiền</div></div>
+          <div class="actions">
+            @if (w.DaChuyenTuDong)
+            {
+              <span class="doc-status approved">Đã chuyển tự động @w.ThoiGianChuyenTuDong?.ToString("HH:mm:ss")</span>
+            }
+            else
+            {
+              <span class="doc-status pending">Vượt hạn mức — chờ admin xem lại</span>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</div>
+
+@section Scripts {
+<script>
+  function saveCommission(){
+    const rate = Number(document.getElementById('commission-rate').value);
+    if (rate < 0 || rate > 50){ alert('Tỉ lệ hoa hồng phải trong khoảng 0–50%.'); return; }
+    // TODO BACKEND: await fetch('/api/admin/settings/commission', {method:'PUT', body: JSON.stringify({rate,
+    //   auto_payout: document.getElementById('auto-payout-toggle').checked,
+    //   auto_withdraw: document.getElementById('auto-withdraw-toggle').checked,
+    //   auto_withdraw_limit: Number(document.getElementById('auto-withdraw-limit').value) })});
+    document.getElementById('stat-commission-total').textContent = formatVnd(86400000 * rate / 100);
+    alert('Đã lưu tỉ lệ hoa hồng: ' + rate + '%. Áp dụng cho mọi giao dịch mới kể từ bây giờ.\n(demo — cần nối API).');
+  }
+
+  function toggleAutoPayout(){
+    const on = document.getElementById('auto-payout-toggle').checked;
+    console.log('Tự động cộng tiền vào ví tài xế:', on ? 'BẬT' : 'TẮT');
+  }
+
+  function toggleAutoWithdraw(){
+    const on = document.getElementById('auto-withdraw-toggle').checked;
+    console.log('Rút tiền tự động cho tài xế:', on ? 'BẬT' : 'TẮT');
+  }
+</script>
+}
