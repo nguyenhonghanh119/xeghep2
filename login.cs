@@ -1,12 +1,21 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.RateLimiting;
 using MySqlConnector;
 using XeGhepApp.Data;
 
 namespace XeGhepApp.Pages;
 
+[EnableRateLimiting("auth")]
 public class LoginModel : PageModel
 {
+    private readonly DriverTokenService _tokenService;
+
+    public LoginModel(DriverTokenService tokenService)
+    {
+        _tokenService = tokenService;
+    }
+
     [BindProperty]
     public string Phone { get; set; } = "";
 
@@ -34,7 +43,7 @@ public class LoginModel : PageModel
 
         if (string.IsNullOrEmpty(phone) || string.IsNullOrEmpty(password))
         {
-            ErrorMessage = "Vui lòng nhập đầy đủ thông tin đăng nhập.";
+            ErrorMessage = "Vui lòng nhập đầy đủ số điện thoại và mật khẩu.";
             return Page();
         }
 
@@ -66,6 +75,24 @@ public class LoginModel : PageModel
                 return Page();
             }
 
+            if (role != "driver")
+            {
+                ErrorMessage = "Tài khoản này không thuộc phân hệ tài xế.";
+                return Page();
+            }
+
+            if (status == "pending")
+            {
+                HttpContext.Session.SetString("status", status);
+                ErrorMessage = "Hồ sơ tài xế đang chờ Admin phê duyệt.";
+                return Page();
+            }
+
+            var auth = await _tokenService.IssueAsync(
+                checked((int)userId.Value), fullName ?? "", role,
+                HttpContext.Connection.RemoteIpAddress?.ToString(), Request.Headers.UserAgent);
+            _tokenService.WriteCookies(Response, Request.IsHttps, auth.accessToken, auth.refreshToken, auth.accessExpiresAt);
+
             HttpContext.Session.SetInt32("user_id", (int)userId.Value);
             HttpContext.Session.SetString("role", role ?? "");
             HttpContext.Session.SetString("status", status ?? "");
@@ -77,18 +104,14 @@ public class LoginModel : PageModel
             return Page();
         }
 
-        // YÊU CẦU: Báo lỗi chung chung khi sai SĐT hoặc Mật khẩu để tăng tính bảo mật
-        ErrorMessage = "Thông tin đăng nhập sai, hãy kiểm tra lại.";
+        ErrorMessage = "Số điện thoại hoặc mật khẩu không đúng.";
         return Page();
     }
 
     private static string? ResolveRedirect(string? role, string? status)
     {
-        // YÊU CẦU: Phân quyền và điều hướng chuẩn xác (Đã loại bỏ đuôi .php)
-        if (status == "pending" && role == "driver") return "/TaiXe/ChoDuyet"; // Chuyển tài xế chưa duyệt vào trang chờ
-        if (role == "admin") return "/QuanTri/Index";         // Chuyển Admin vào trang quản trị
-        if (role == "driver") return "/Index";                // Chuyển Tài xế (đã duyệt) vào trang tổng quan tài xế
-        if (role == "passenger") return "/NguoiDung/Index";   // Chuyển Khách hàng vào trang người dùng
+        if (status == "pending" && role == "driver") return "/Login";
+        if (role == "driver") return "/";
         return null;
     }
 }

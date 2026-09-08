@@ -24,12 +24,3 @@ public static class Db
     }
 }
 
-/// <summary>
-/// Giả lập ID tài xế đang đăng nhập (Trần Văn Hùng có user_id = 2),
-/// y hệt biến $driver_id = 2; được hard-code trong tất cả các file PHP gốc.
-/// Khi có đăng nhập thật, thay DriverId bằng giá trị lấy từ session.
-/// </summary>
-public static class Constants
-{
-    public const int DriverId = 2;
-}

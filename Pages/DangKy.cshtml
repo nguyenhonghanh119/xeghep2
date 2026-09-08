@@ -3,385 +3,307 @@
 @{
     Layout = null;
 }
-<!DOCTYPE html>
+
+<!doctype html>
 <html lang="vi">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>XeGhép — Đăng ký tài khoản</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-  :root{ --primary: #2563eb; --text: #111827; --muted: #6b7280; --border: #d1d5db; --bg: #f5f6f8; }
-  body { margin:0; background:var(--bg); font-family:'Inter', sans-serif; color:var(--text); }
-  .auth-shell{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:30px 20px; }
-  
-  .auth-card{ width:100%; max-width:400px; background:#fff; border:1px solid var(--border); border-radius:16px; padding:32px 28px; box-shadow:0 8px 24px rgba(0,0,0,0.06); transition: max-width 0.3s; }
-  .auth-card.is-driver { max-width:650px; }
-  
-  .auth-brand{ display:flex; align-items:center; gap:10px; margin-bottom:20px; }
-  .dot-route{ width:36px; height:36px; border-radius:10px; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px; }
-  .auth-brand div{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:17px; }
-  .auth-brand small{ display:block; font-weight:500; font-size:11px; letter-spacing:.04em; color:var(--muted); }
-  
-  .role-toggle { display:flex; background:var(--bg); border-radius:10px; padding:4px; margin-bottom:24px; }
-  .role-toggle button { flex:1; padding:10px; border:none; background:transparent; border-radius:8px; font-weight:600; font-size:14px; cursor:pointer; color:var(--muted); transition:0.2s; font-family:inherit; }
-  .role-toggle button.active { background:#fff; color:var(--primary); box-shadow:0 2px 8px rgba(0,0,0,0.08); }
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>XeGhép — Đăng ký tài xế</title>
+    <link rel="stylesheet" href="/style.css">
+    <style>
+        body {
+            margin: 0;
+            background: #f5f6f8;
+            font-family: Inter, Arial, sans-serif;
+        }
 
-  .form-section { display: none; }
-  #passenger-fields.active { display: block; }
-  #driver-fields.active { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  @@media(max-width: 600px){ #driver-fields.active { grid-template-columns: 1fr; } }
-  
-  .section-title { font-size:14px; text-transform:uppercase; font-weight:700; color:var(--muted); margin: 20px 0 10px; letter-spacing:0.05em; border-bottom:1px solid var(--border); padding-bottom:6px; grid-column:1/-1; }
+        .auth-shell {
+            min-height: 100vh;
+            padding: 30px 18px;
+        }
 
-  .field{ margin-bottom:16px; }
-  .field label{ display:block; font-size:13px; font-weight:600; margin-bottom:6px; color:var(--text); }
-  .field input{ width:100%; padding:11px 12px; border:1px solid var(--border); border-radius:10px; font-size:14px; font-family:inherit; outline:none; transition:border-color .15s; box-sizing:border-box; }
-  .field input[type="file"] { padding:8px; font-size:12.5px; background:var(--bg); cursor:pointer; }
-  .field input:focus{ border-color:var(--primary); }
-  
-  .btn-submit{ width:100%; padding:12px; border:none; border-radius:10px; background:var(--primary); color:#fff; font-weight:600; font-size:15px; cursor:pointer; font-family:inherit; margin-top:10px; }
-  .btn-submit:hover{ opacity:.92; }
-  .btn-outline { background:transparent; border:1.5px solid var(--border); color:var(--text); }
-  
-  .auth-footer{ margin-top:22px; text-align:center; font-size:13px; color:var(--muted); }
-  .link{ color:var(--primary); text-decoration:none; font-weight:600; }
-  
-  .alert{ padding:12px; border-radius:8px; font-size:13.5px; margin-bottom:20px; font-weight:500; }
-  .alert-error{ background:#fef2f2; border:1px solid #fecaca; color:#b91c1c; }
-  .alert-success{ background:#f0fdf4; border:1px solid #bbf7d0; color:#16a34a; }
+        .card {
+            max-width: 720px;
+            margin: auto;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 28px rgba(0, 0, 0, .06);
+        }
 
-  #otp-screen { display: none; text-align: center; }
-  .otp-inputs { display: flex; gap: 8px; justify-content: center; margin: 20px 0; }
-  .otp-inputs input { width: 45px; height: 50px; font-size: 20px; text-align: center; font-weight: bold; border-radius: 8px; border: 1px solid var(--border); }
-  .otp-inputs input:disabled { background: var(--bg); color: var(--muted); }
-  #otp-timer-box { font-size: 13.5px; color: var(--muted); margin-bottom: 6px; }
-  #otp-timer-box b { color: var(--primary); font-family:'Space Grotesk', sans-serif; }
-</style>
+        h1 {
+            font-size: 23px;
+            margin: 0 0 6px;
+        }
+
+        .sub {
+            color: #6b7280;
+            margin: 0 0 24px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .field label {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .field input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 9px;
+        }
+
+        .wide {
+            grid-column: 1 / -1;
+        }
+
+        .section {
+            grid-column: 1 / -1;
+            font-weight: 800;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 10px 0 6px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: 0;
+            border-radius: 9px;
+            background: #2563eb;
+            color: white;
+            font-weight: 700;
+            margin-top: 20px;
+        }
+
+        .alert {
+            padding: 11px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .error {
+            background: #fef2f2;
+            color: #b91c1c;
+        }
+
+        .success {
+            background: #f0fdf4;
+            color: #15803d;
+        }
+
+        .otp {
+            display: none;
+            text-align: center;
+        }
+
+        .otp input {
+            width: 180px;
+            font-size: 24px;
+            letter-spacing: 12px;
+            text-align: center;
+            padding: 12px;
+        }
+
+        .foot {
+            text-align: center;
+            margin-top: 18px;
+        }
+
+        @@media(max-width: 650px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .wide,
+            .section {
+                grid-column: auto;
+            }
+        }
+    </style>
 </head>
 <body>
-<div class="auth-shell">
-  <div class="auth-card" id="card-container">
-    <div class="auth-brand">
-      <span class="dot-route">X</span>
-      <div>XeGhép<small>ĐĂNG KÝ TÀI KHOẢN MỚI</small></div>
-    </div>
+    <main class="auth-shell">
+        <section class="card">
+            <h1>Đăng ký đối tác tài xế</h1>
+            <p class="sub">Nhập đủ thông tin và 9 giấy tờ bắt buộc để Admin xét duyệt.</p>
 
-    @if (!string.IsNullOrEmpty(Model.ErrorMessage)) {
-        <div class="alert alert-error">@Model.ErrorMessage</div>
-    }
-    
-    @if (!string.IsNullOrEmpty(Model.SuccessMessage)) {
-        <div class="alert alert-success">
-            @Model.SuccessMessage<br><br>
-            <a href="/Login" class="btn-submit" style="display:inline-block; text-align:center; text-decoration:none;">Đến trang Đăng nhập</a>
-        </div>
-    } else {
-
-    <div id="step-info">
-        <div class="role-toggle">
-            <button type="button" id="btn-passenger" class="active" onclick="switchRole('passenger')">Khách hàng</button>
-            <button type="button" id="btn-driver" onclick="switchRole('driver')">Tài xế (Đối tác)</button>
-        </div>
-
-        <form id="main-reg-form" method="POST" action="" enctype="multipart/form-data">
-            <!-- TỰ ĐỘNG SINH MÃ BẢO MẬT CHỐNG CHẶN REQUEST -->
-            @Html.AntiForgeryToken()
-            
-            <input type="hidden" name="reg_role" id="reg_role" value="passenger">
-
-            <div id="passenger-fields" class="form-section active">
-                <div class="field">
-                    <label>Số điện thoại hoặc Email</label>
-                    <input type="text" name="contact" id="contact" placeholder="Nhập SĐT hoặc Email" required>
-                </div>
-                <div class="field">
-                    <label>Mật khẩu</label>
-                    <input type="password" name="password" id="passenger_pw" placeholder="Tối thiểu 6 ký tự" required>
-                </div>
-            </div>
-
-            <div id="driver-fields" class="form-section">
-                <div class="section-title">Thông tin & Giấy tờ tùy thân</div>
-                <div class="field"><label>Họ và tên</label><input type="text" name="full_name" placeholder="Nguyễn Văn A"></div>
-                <div class="field"><label>Số điện thoại</label><input type="tel" name="driver_phone" placeholder="09xx xxx xxx"></div>
-                <div class="field"><label>Email (Tùy chọn)</label><input type="email" name="driver_email" placeholder="example@gmail.com"></div>
-                <div class="field"><label>Số CCCD</label><input type="text" name="cccd_number" placeholder="Nhập 12 số CCCD"></div>
-                
-                <div class="field"><label>Mật khẩu</label><input type="password" name="driver_pw" id="driver_pw" placeholder="Tối thiểu 6 ký tự"></div>
-                
-                <div class="field"><label>Ảnh chân dung rõ mặt</label><input type="file" name="portrait" accept="image/*"></div>
-                <div class="field"><label>Lý lịch tư pháp</label><input type="file" name="lltp" accept="image/*,.pdf"></div>
-                <div class="field"><label>CCCD Mặt trước</label><input type="file" name="cccd_front" accept="image/*"></div>
-                <div class="field"><label>CCCD Mặt sau</label><input type="file" name="cccd_back" accept="image/*"></div>
-
-                <div class="section-title">Chuyên môn & Phương tiện</div>
-                <div class="field"><label>Giấy phép lái xe</label><input type="file" name="gplx" accept="image/*"></div>
-                <div class="field"><label>Giấy khám sức khỏe</label><input type="file" name="gksk" accept="image/*,.pdf"></div>
-                <div class="field"><label>Loại xe</label><input type="text" name="vehicle_type" placeholder="VD: Kia Carnival 7 chỗ"></div>
-                <div class="field"><label>Biển số xe</label><input type="text" name="license_plate" placeholder="VD: 30F-123.45"></div>
-                <div class="field"><label>Giấy đăng ký xe</label><input type="file" name="cavet" accept="image/*"></div>
-                <div class="field"><label>Bảo hiểm TNDS</label><input type="file" name="baohiem" accept="image/*"></div>
-                <div class="field" style="grid-column:1/-1;"><label>Hình ảnh thực tế xe</label><input type="file" name="hinhxe" accept="image/*"></div>
-
-                <div class="section-title">Tài khoản Ngân hàng</div>
-                <div class="field" style="grid-column:1/-1;">
-                    <label>Thông tin nhận doanh thu</label>
-                    <input type="text" name="bank_info" placeholder="VD: Vietcombank - 0123456789 - NGUYEN VAN A">
-                </div>
-            </div>
-
-            <button type="button" class="btn-submit" onclick="initiateRegistration()">Nhận mã xác nhận (OTP)</button>
-        </form>
-
-        <div class="auth-footer">
-          Đã có tài khoản? <a href="/Login" class="link">Đăng nhập ngay</a>
-        </div>
-    </div>
-
-    <div id="otp-screen">
-        <h2 style="margin-top:0">Xác thực tài khoản</h2>
-        <p style="color:var(--muted); font-size:14px; margin-bottom:20px;">
-            Hệ thống đã gửi một mã OTP đến <br><b id="otp-target" style="color:var(--text)"></b>
-        </p>
-        
-        <div class="alert alert-success" id="otp-debug-note" style="font-size:12px; padding:8px; display:none;"></div>
-
-        <div id="otp-timer-box">
-            Mã có hiệu lực trong <b id="otp-countdown">01:30</b>
-        </div>
-
-        <div class="otp-inputs">
-            <input type="text" maxlength="1" class="otp-box" onkeyup="moveToNext(this, event)">
-            <input type="text" maxlength="1" class="otp-box" onkeyup="moveToNext(this, event)">
-            <input type="text" maxlength="1" class="otp-box" onkeyup="moveToNext(this, event)">
-            <input type="text" maxlength="1" class="otp-box" onkeyup="moveToNext(this, event)">
-            <input type="text" maxlength="1" class="otp-box" onkeyup="moveToNext(this, event)">
-            <input type="text" maxlength="1" class="otp-box" onkeyup="moveToNext(this, event)">
-        </div>
-        
-        <div class="alert alert-error" id="otp-error" style="display:none; padding:8px;">Mã xác nhận không hợp lệ!</div>
-        <div class="alert alert-error" id="otp-expired-msg" style="display:none; padding:8px;">Mã OTP đã hết hạn. Vui lòng bấm "Gửi lại mã OTP" để nhận mã mới.</div>
-
-        <button type="button" class="btn-submit" id="btn-verify-otp" onclick="verifyOTP()">Xác nhận & Hoàn tất</button>
-        <button type="button" class="btn-submit btn-outline" id="btn-resend-otp" style="display:none;" onclick="resendOTP()">Gửi lại mã OTP</button>
-        <button type="button" class="btn-submit btn-outline" onclick="cancelOTP()">Quay lại sửa thông tin</button>
-    </div>
-
-    }
-  </div>
-</div>
-
-<script>
-  let currentRole = 'passenger';
-
-  function switchRole(role) {
-    currentRole = role;
-    document.getElementById('reg_role').value = role;
-    
-    document.getElementById('btn-passenger').classList.toggle('active', role === 'passenger');
-    document.getElementById('btn-driver').classList.toggle('active', role === 'driver');
-    
-    const card = document.getElementById('card-container');
-    const driverFields = document.getElementById('driver-fields');
-    const passengerFields = document.getElementById('passenger-fields');
-    
-    if(role === 'driver') {
-        card.classList.add('is-driver');
-        driverFields.classList.add('active');
-        passengerFields.classList.remove('active');
-        
-        document.getElementById('contact').required = false;
-        document.getElementById('passenger_pw').name = 'ignore_pw'; 
-        document.getElementById('driver_pw').name = 'password';     
-        
-        driverFields.querySelectorAll('input').forEach(input => {
-            if(input.name !== 'bank_info' && input.name !== 'driver_email') input.required = true;
-        });
-    } else {
-        card.classList.remove('is-driver');
-        driverFields.classList.remove('active');
-        passengerFields.classList.add('active');
-        
-        document.getElementById('contact').required = true;
-        document.getElementById('passenger_pw').name = 'password';
-        document.getElementById('driver_pw').name = 'ignore_pw';
-        
-        driverFields.querySelectorAll('input').forEach(input => input.required = false);
-    }
-  }
-
-  const OTP_DURATION = 90; 
-  let otpTimerInterval = null;
-  let otpSecondsLeft = OTP_DURATION;
-
-  function initiateRegistration() {
-      const form = document.getElementById('main-reg-form');
-      if (!form.reportValidity()) return; 
-
-      let target = '';
-      if(currentRole === 'passenger') {
-          target = document.getElementById('contact').value;
-      } else {
-          const phone = document.getElementsByName('driver_phone')[0].value;
-          const email = document.getElementsByName('driver_email')[0].value;
-          target = email ? email : phone;
-      }
-
-      document.getElementById('otp-target').textContent = target;
-
-      requestOTP(target, 'send_otp', function() {
-          document.getElementById('step-info').style.display = 'none';
-          document.getElementById('otp-screen').style.display = 'block';
-          document.querySelector('.otp-box').focus();
-      });
-  }
-
-  function requestOTP(target, action, onSuccess) {
-      const fd = new FormData();
-      fd.append('ajax_action', action);
-      fd.append('otp_target', target);
-      fd.append('reg_role', currentRole);
-
-      // ĐÍNH KÈM MÃ BẢO MẬT VÀO YÊU CẦU AJAX GỬI NGẦM
-      const tokenField = document.querySelector('input[name="__RequestVerificationToken"]');
-      if (tokenField) {
-          fd.append('__RequestVerificationToken', tokenField.value);
-      }
-
-      fetch('', { method: 'POST', body: fd })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                document.getElementById('otp-error').style.display = 'none';
-                document.getElementById('otp-expired-msg').style.display = 'none';
-                document.getElementById('otp-timer-box').style.display = 'block';
-                document.getElementById('btn-verify-otp').style.display = 'inline-block';
-                document.getElementById('btn-resend-otp').style.display = 'none';
-
-                clearOtpInputs();
-                setOtpInputsEnabled(true);
-                startOtpCountdown(data.expires_in || OTP_DURATION);
-
-                const debugNote = document.getElementById('otp-debug-note');
-                if (data.debug_code) {
-                    debugNote.style.display = 'block';
-                    debugNote.textContent = '(Test) Mã OTP của bạn: ' + data.debug_code;
-                } else {
-                    debugNote.style.display = 'none';
-                }
-
-                if (onSuccess) onSuccess();
-            } else {
-                alert(data.message || 'Không thể gửi mã OTP, vui lòng thử lại.');
+            @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+            {
+                <div class="alert error">@Model.ErrorMessage</div>
             }
-        })
-        .catch(() => alert('Lỗi kết nối máy chủ, vui lòng thử lại sau.'));
-  }
 
-  function startOtpCountdown(seconds) {
-      clearInterval(otpTimerInterval);
-      otpSecondsLeft = seconds;
-      updateOtpCountdownDisplay();
-
-      otpTimerInterval = setInterval(() => {
-          otpSecondsLeft--;
-          if (otpSecondsLeft <= 0) {
-              clearInterval(otpTimerInterval);
-              onOtpExpired();
-          } else {
-              updateOtpCountdownDisplay();
-          }
-      }, 1000);
-  }
-
-  function updateOtpCountdownDisplay() {
-      const m = Math.floor(otpSecondsLeft / 60).toString().padStart(2, '0');
-      const s = (otpSecondsLeft % 60).toString().padStart(2, '0');
-      document.getElementById('otp-countdown').textContent = m + ':' + s;
-  }
-
-  function onOtpExpired() {
-      document.getElementById('otp-timer-box').style.display = 'none';
-      document.getElementById('otp-expired-msg').style.display = 'block';
-      document.getElementById('btn-verify-otp').style.display = 'none';
-      document.getElementById('btn-resend-otp').style.display = 'inline-block';
-      setOtpInputsEnabled(false);
-  }
-
-  function resendOTP() {
-      const target = document.getElementById('otp-target').textContent;
-      requestOTP(target, 'resend_otp');
-  }
-
-  function clearOtpInputs() {
-      document.querySelectorAll('.otp-box').forEach(input => input.value = '');
-  }
-
-  function setOtpInputsEnabled(enabled) {
-      document.querySelectorAll('.otp-box').forEach(input => input.disabled = !enabled);
-  }
-
-  function moveToNext(current, event) {
-      if (current.value.length >= current.maxLength) {
-          let next = current.nextElementSibling;
-          if (next) next.focus();
-      }
-      if (event.key === "Backspace") {
-          let prev = current.previousElementSibling;
-          if (prev) prev.focus();
-      }
-  }
-
-  function cancelOTP() {
-      clearInterval(otpTimerInterval);
-      document.getElementById('step-info').style.display = 'block';
-      document.getElementById('otp-screen').style.display = 'none';
-      document.getElementById('otp-error').style.display = 'none';
-      document.getElementById('otp-expired-msg').style.display = 'none';
-      document.getElementById('otp-debug-note').style.display = 'none';
-  }
-
-  function verifyOTP() {
-      let otpCode = '';
-      document.querySelectorAll('.otp-box').forEach(input => otpCode += input.value);
-
-      if (otpCode.length < 6) {
-          document.getElementById('otp-error').textContent = 'Vui lòng nhập đủ 6 số.';
-          document.getElementById('otp-error').style.display = 'block';
-          return;
-      }
-
-      const fd = new FormData();
-      fd.append('ajax_action', 'verify_otp');
-      fd.append('otp_code', otpCode);
-
-      // ĐÍNH KÈM MÃ BẢO MẬT VÀO YÊU CẦU XÁC THỰC OTP
-      const tokenField = document.querySelector('input[name="__RequestVerificationToken"]');
-      if (tokenField) {
-          fd.append('__RequestVerificationToken', tokenField.value);
-      }
-
-      fetch('', { method: 'POST', body: fd })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                clearInterval(otpTimerInterval);
-                document.getElementById('main-reg-form').submit();
-            } else {
-                document.getElementById('otp-error').textContent = data.message || 'Mã xác nhận không hợp lệ!';
-                document.getElementById('otp-error').style.display = 'block';
-                if (data.expired) {
-                    onOtpExpired();
-                }
+            @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
+            {
+                <div class="alert success">@Model.SuccessMessage</div>
+                <div class="foot"><a href="/Login">Đến trang đăng nhập</a></div>
             }
-        })
-        .catch(() => {
-            document.getElementById('otp-error').textContent = 'Lỗi kết nối máy chủ, vui lòng thử lại.';
-            document.getElementById('otp-error').style.display = 'block';
-        });
-  }
-</script>
+            else
+            {
+                <form id="register-form" method="post" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="reg_role" value="driver">
+
+                    <div class="grid">
+                        <div class="section">Thông tin cá nhân</div>
+                        <div class="field">
+                            <label>Họ và tên</label>
+                            <input name="full_name" required>
+                        </div>
+                        <div class="field">
+                            <label>Số điện thoại</label>
+                            <input id="driver_phone" name="driver_phone" inputmode="tel" required>
+                        </div>
+                        <div class="field">
+                            <label>Email</label>
+                            <input name="driver_email" type="email">
+                        </div>
+                        <div class="field">
+                            <label>Mật khẩu</label>
+                            <input name="password" type="password" minlength="8" required>
+                        </div>
+
+                        <div class="section">Xe và giấy tờ</div>
+                        <div class="field">
+                            <label>Loại xe</label>
+                            <input name="vehicle_type" required>
+                        </div>
+                        <div class="field">
+                            <label>Biển số</label>
+                            <input name="license_plate" required>
+                        </div>
+                        <div class="field">
+                            <label>Số ghế phục vụ</label>
+                            <input name="seat_count" type="number" min="1" max="16" value="4" required>
+                        </div>
+                        <div class="field">
+                            <label>Khu vực hoạt động</label>
+                            <input name="operation_area" placeholder="Ví dụ: Hà Nội, Ninh Bình" required>
+                        </div>
+
+                        @foreach (var doc in new[]
+                        {
+                            ("portrait", "Ảnh chân dung"),
+                            ("cccd_front", "CCCD mặt trước"),
+                            ("cccd_back", "CCCD mặt sau"),
+                            ("gplx", "Giấy phép lái xe"),
+                            ("lltp", "Lý lịch tư pháp"),
+                            ("gksk", "Giấy khám sức khỏe"),
+                            ("cavet", "Đăng ký xe"),
+                            ("baohiem", "Bảo hiểm TNDS"),
+                            ("hinhxe", "Ảnh thực tế xe")
+                        })
+                        {
+                            <div class="field">
+                                <label>@doc.Item2</label>
+                                <input type="file"
+                                       name="@doc.Item1"
+                                       accept="image/jpeg,image/png,application/pdf"
+                                       required>
+                            </div>
+                        }
+                    </div>
+
+                    <button class="btn" type="button" onclick="sendOtp()">Nhận mã OTP</button>
+                </form>
+
+                <div id="otp" class="otp">
+                    <h2>Xác thực số điện thoại</h2>
+                    <p>Mã có hiệu lực 90 giây.</p>
+                    <div id="debug" class="alert success" style="display:none"></div>
+                    <input id="otp-code" maxlength="6" inputmode="numeric">
+                    <button class="btn" type="button" onclick="verifyOtp()">Xác nhận và hoàn tất</button>
+                    <button class="btn"
+                            type="button"
+                            style="background:#64748b"
+                            onclick="sendOtp()">
+                        Gửi lại OTP
+                    </button>
+                    <div id="otp-error" class="alert error" style="display:none;margin-top:12px"></div>
+                </div>
+
+                <div class="foot">Đã có tài khoản? <a href="/Login">Đăng nhập</a></div>
+            }
+        </section>
+    </main>
+
+    <script>
+        const form = document.getElementById('register-form');
+
+        function token(formData) {
+            const antiForgeryToken = document.querySelector('[name="__RequestVerificationToken"]');
+            if (antiForgeryToken) {
+                formData.append('__RequestVerificationToken', antiForgeryToken.value);
+            }
+        }
+
+        async function sendOtp() {
+            if (!form.reportValidity()) {
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('ajax_action', 'send_otp');
+            formData.append('otp_target', document.getElementById('driver_phone').value);
+            formData.append('reg_role', 'driver');
+            token(formData);
+
+            const response = await fetch('', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            if (!data.success) {
+                showError(data.message);
+                return;
+            }
+
+            form.style.display = 'none';
+            document.getElementById('otp').style.display = 'block';
+
+            if (data.debug_code) {
+                const debug = document.getElementById('debug');
+                debug.textContent = 'Mã OTP demo: ' + data.debug_code;
+                debug.style.display = 'block';
+            }
+        }
+
+        async function verifyOtp() {
+            const formData = new FormData();
+            formData.append('ajax_action', 'verify_otp');
+            formData.append('otp_code', document.getElementById('otp-code').value);
+            token(formData);
+
+            const response = await fetch('', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            if (!data.success) {
+                showError(data.message);
+                return;
+            }
+
+            form.submit();
+        }
+
+        function showError(message) {
+            const error = document.getElementById('otp-error');
+            error.textContent = message || 'Không thể xử lý OTP.';
+            error.style.display = 'block';
+        }
+    </script>
 </body>
 </html>

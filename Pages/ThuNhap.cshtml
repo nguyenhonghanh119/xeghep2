@@ -12,6 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
+<script src="/auth-fetch.js"></script>
 </head>
 <body>
 <div class="shell">
@@ -31,7 +32,7 @@
     </nav>
     <div class="sidebar-foot">
         <div class="av">@(Model.Avatar ?? "U")</div>
-        <div><b>@Model.FullName</b><span>★ @Model.Rating.ToString("0.0") · Đã duyệt</span></div>
+        <div><b>@Model.FullName</b><span>★ @Model.Rating.ToString("0.0") · Đã duyệt</span><a href="/Login" onclick="return logoutDriver(event)">🚪 Đăng xuất</a></div>
     </div>
   </aside>
 

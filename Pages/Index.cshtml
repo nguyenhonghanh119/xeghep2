@@ -1,7 +1,6 @@
 @page
 @model XeGhepApp.Pages.IndexModel
 @{
-    // Tắt layout mặc định của ASP.NET vì bạn đã có cấu trúc HTML <html><body> riêng
     Layout = null; 
 }
 <!DOCTYPE html>
@@ -13,9 +12,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
-<!-- Leaflet (OpenStreetMap) -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Leaflet (OpenStreetMap) — có fallback sang CDN thứ 2 nếu unpkg.com bị chặn/lỗi -->
+<link id="leaflet-css" rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        onerror="this.onerror=null;
+                 var s=document.createElement('script');
+                 s.src='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
+                 s.onerror=function(){ window.__leafletLoadFailed = true; };
+                 document.head.appendChild(s);"></script>
 <style>
   #trip-map{ width:100%; height:280px; border-radius:12px; margin-top:10px; background:var(--bg-soft,#f1f3f5); z-index:0; }
   .map-actions{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
@@ -29,6 +34,7 @@
   .profile-dropdown a.logout { color: var(--coral); }
   .profile-dropdown a.logout:hover { background: var(--coral-dim); }
 </style>
+<script src="/auth-fetch.js"></script>
 </head>
 <body>
 <div class="shell">
@@ -55,7 +61,7 @@
         
         <div id="profile-dropdown" class="profile-dropdown hidden">
             <a href="/HoSo">⚙️ Cài đặt tài khoản</a>
-            <a href="/Login" class="logout">🚪 Đăng xuất</a>
+            <a href="/Login" class="logout" onclick="return logoutDriver(event)">🚪 Đăng xuất</a>
         </div>
     </div>
   </aside>
@@ -63,8 +69,19 @@
   <main class="main">
     <div class="view" id="view-overview">
 
+      <div class="section-block" style="margin-bottom:16px">
+        <div class="card">
+          <div class="list-title">Chuyến Admin mới phân công</div>
+          <div id="assignment-list"><span style="font-size:13px;color:var(--ink-faint)">Đang tải...</span></div>
+        </div>
+        <div class="card">
+          <div class="list-title">Thông báo</div>
+          <div id="driver-notification-list"><span style="font-size:13px;color:var(--ink-faint)">Đang tải...</span></div>
+        </div>
+      </div>
+
       <div class="card" id="map-card" style="margin-bottom:16px">
-        <div class="list-title" style="margin-top:0">Bản đồ chuyến sắp khởi hành</div>
+        <div class="list-title" style="margin-top:0">Đường đi đến điểm đón khách</div>
 
         @if(Model.NextTrip != null) {
           <div id="trip-map"
@@ -77,9 +94,9 @@
                data-dropoff-label="@Model.NextTrip.DropoffLocation"></div>
 
           <div class="map-actions">
-            <button type="button" class="btn btn-outline btn-sm" id="btn-locate-me" onclick="locateMe()">📍 Vị trí của tôi</button>
-            <button type="button" class="btn btn-outline btn-sm" id="btn-fit-route" onclick="fitRoute()">🗺️ Xem toàn tuyến</button>
-            <button type="button" class="btn btn-outline btn-sm" id="btn-open-gmap" onclick="openInGoogleMaps()">🔗 Mở Google Maps</button>
+            <!-- Đổi nút bấm thành hành động xin quyền vị trí và vẽ đường -->
+            <button type="button" class="btn btn-primary btn-sm" id="btn-locate-me" onclick="locateAndRoute()">📍 Lấy vị trí & Chỉ đường đến khách</button>
+            <button type="button" class="btn btn-outline btn-sm" id="btn-open-gmap" onclick="openInGoogleMaps()">🔗 Dẫn đường bằng Google Maps</button>
           </div>
         } else {
           <div class="map-empty">Chưa có chuyến sắp khởi hành để hiển thị trên bản đồ.</div>
@@ -118,7 +135,7 @@
           
           <div class="pax-list" id="next-trip-pax">
             @foreach(var pax in Model.PaxList) {
-            <div class="pax-chip"><span class="av">@(pax.Avatar ?? pax.FirstName.Substring(0, 1))</span> @pax.FirstName · @pax.Seats ghế</div>
+            <div class="pax-chip"><span class="av">@(pax.Avatar ?? pax.FirstName.Substring(0, 1))</span> @pax.FirstName · @pax.Seats ghế <span class="sub">Đón: @pax.PickupAddress · Trả: @pax.DropoffAddress</span></div>
             }
             @if(!Model.PaxList.Any()) {
                 <span style="font-size:12.5px;color:var(--ink-faint);">Chưa có hành khách đặt chỗ</span>
@@ -155,8 +172,66 @@
   </main>
 </div>
 
-<script src="assets/common.js"></script>
+<script src="/assets/common.js"></script>
 <script>
+  function loadAssignments(){
+    var list = document.getElementById('assignment-list');
+    if (!list) return;
+    fetch('/api/driver/assignments').then(function(res){ return res.json(); }).then(function(items){
+      var pending = items.filter(function(item){ return item.status === 'pending'; });
+      if (!pending.length) { list.innerHTML = '<span style="font-size:13px;color:var(--ink-faint)">Không có chuyến mới đang chờ phản hồi.</span>'; return; }
+      list.innerHTML = pending.map(function(item){
+        return '<div class="activity-item" data-assignment-id="' + item.assignment_id + '">' +
+          '<div><b>' + escapeText(item.route_from) + ' → ' + escapeText(item.route_to) + '</b>' +
+          '<span>' + new Date(item.departure_time).toLocaleString('vi-VN') + ' · ' + item.total_seats + ' ghế</span>' +
+          '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">' +
+          '<button class="btn btn-green btn-sm" onclick="respondAssignment(this,true)">Nhận chuyến</button>' +
+          '<button class="btn btn-coral btn-sm" onclick="showRejectReason(this)">Từ chối</button></div>' +
+          '<div class="assignment-reason hidden" style="margin-top:8px"><input type="text" maxlength="500" placeholder="Nhập lý do từ chối" style="width:100%;padding:8px">' +
+          '<button class="btn btn-coral btn-sm" style="margin-top:6px" onclick="respondAssignment(this,false)">Gửi lý do</button></div></div></div>';
+      }).join('');
+    }).catch(function(){ list.innerHTML = '<span style="font-size:13px;color:var(--coral)">Không tải được danh sách phân công.</span>'; });
+  }
+
+  function showRejectReason(btn){
+    btn.closest('.activity-item').querySelector('.assignment-reason').classList.remove('hidden');
+  }
+
+  function respondAssignment(btn, accept){
+    var item = btn.closest('.activity-item');
+    var id = item.dataset.assignmentId;
+    var options = { method: 'POST', headers: { 'Content-Type': 'application/json' } };
+    if (!accept) {
+      var reason = item.querySelector('input').value.trim();
+      if (!reason) { showToast('Vui lòng nhập lý do từ chối.', 'error'); return; }
+      options.body = JSON.stringify({ reason: reason });
+    }
+    btn.disabled = true;
+    fetch('/api/driver/assignments/' + id + '/' + (accept ? 'accept' : 'reject'), options)
+      .then(function(res){ return res.json().then(function(data){ return { ok: res.ok, data: data }; }); })
+      .then(function(result){ if (!result.ok) throw new Error(result.data.message || 'Không thể xử lý phân công.'); location.reload(); })
+      .catch(function(err){ showToast(err.message, 'error'); btn.disabled = false; });
+  }
+
+  function loadDriverNotifications(){
+    var list = document.getElementById('driver-notification-list');
+    if (!list) return;
+    fetch('/api/driver/notifications?page=1&pageSize=5').then(function(res){ return res.json(); }).then(function(data){
+      if (!data.items.length) { list.innerHTML = '<span style="font-size:13px;color:var(--ink-faint)">Chưa có thông báo.</span>'; return; }
+      list.innerHTML = data.items.map(function(item){ return '<div class="activity-item" onclick="markNotificationRead(this,' + item.id + ')" style="cursor:pointer;opacity:' + (item.read ? '.65' : '1') + '"><div><b>' + escapeText(item.title) + '</b><span>' + escapeText(item.body) + '</span></div></div>'; }).join('');
+    }).catch(function(){ list.innerHTML = '<span style="font-size:13px;color:var(--coral)">Không tải được thông báo.</span>'; });
+  }
+
+  function markNotificationRead(el, id){
+    fetch('/api/driver/notifications/' + id + '/read', { method: 'POST' }).then(function(res){ if (res.ok) el.style.opacity = '.65'; });
+  }
+
+  function escapeText(value){
+    var div = document.createElement('div');
+    div.textContent = value == null ? '' : String(value);
+    return div.innerHTML;
+  }
+
   function startNextTrip(btn){
     var tripId = btn.dataset.tripId;
     if (!tripId) return;
@@ -173,7 +248,7 @@
       .then(function(res) { return res.json().then(function(data) { return { status: res.status, data: data }; }); })
       .then(function(result) {
         if (!result.data.ok) {
-          alert(result.data.message || 'Không thể bắt đầu chuyến, vui lòng thử lại.');
+          showToast(result.data.message || 'Không thể bắt đầu chuyến, vui lòng thử lại.', 'error');
           btn.textContent = originalText;
           btn.disabled = false;
           return;
@@ -183,124 +258,239 @@
         btn.classList.add('btn-primary');
       })
       .catch(function() {
-        alert('Lỗi kết nối, vui lòng thử lại.');
+        showToast('Lỗi kết nối, vui lòng thử lại.', 'error');
         btn.textContent = originalText;
         btn.disabled = false;
       });
   }
 
-  // Script xử lý mở/đóng menu cài đặt - đăng xuất
-  const sidebarProfile = document.getElementById('sidebar-profile');
-  const profileDropdown = document.getElementById('profile-dropdown');
-
-  sidebarProfile.addEventListener('click', function(e) {
-    profileDropdown.classList.toggle('hidden');
-    e.stopPropagation();
-  });
-
-  document.addEventListener('click', function(e) {
-    if (!sidebarProfile.contains(e.target)) {
-      profileDropdown.classList.add('hidden');
-    }
-  });
-
-  // ===== Bản đồ chuyến sắp khởi hành (Leaflet + OpenStreetMap) =====
+  // ===== BẢN ĐỒ: biến toàn cục dùng chung giữa các hàm =====
   var tripMap = null;
   var pickupMarker = null;
-  var dropoffMarker = null;
   var myLocationMarker = null;
   var routeLine = null;
   var mapPickup = null;
-  var mapDropoff = null;
 
+  // Toàn bộ code phụ thuộc DOM được gom vào đây, và mỗi khối được
+  // bọc try/catch riêng để một lỗi (vd: thiếu phần tử #sidebar-profile)
+  // không làm dừng các khối code phía sau (đặc biệt là phần khởi tạo bản đồ).
   document.addEventListener('DOMContentLoaded', function () {
-    var mapEl = document.getElementById('trip-map');
-    if (!mapEl || typeof L === 'undefined') return;
 
-    var hasCoords = mapEl.dataset.hasCoords === '1';
-    var defaultCenter = [21.0278, 105.8342];
-    tripMap = L.map('trip-map', { scrollWheelZoom: false }).setView(defaultCenter, 12);
+    loadAssignments();
+    loadDriverNotifications();
 
-    var primaryTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
-      subdomains: 'abcd',
-      attribution: '&copy; OpenStreetMap &copy; CARTO'
-    }).addTo(tripMap);
+    // --- Menu cài đặt / đăng xuất ở sidebar ---
+    try {
+      var sidebarProfile = document.getElementById('sidebar-profile');
+      var profileDropdown = document.getElementById('profile-dropdown');
 
-    var triedFallback = false;
-    primaryTiles.on('tileerror', function () {
-      if (triedFallback) return;
-      triedFallback = true;
-      tripMap.removeLayer(primaryTiles);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap'
-      }).addTo(tripMap);
-    });
+      if (sidebarProfile && profileDropdown) {
+        sidebarProfile.addEventListener('click', function (e) {
+          profileDropdown.classList.toggle('hidden');
+          e.stopPropagation();
+        });
 
-    setTimeout(function () { tripMap.invalidateSize(); }, 200);
-    window.addEventListener('resize', function () { tripMap.invalidateSize(); });
+        document.addEventListener('click', function (e) {
+          if (!sidebarProfile.contains(e.target)) {
+            profileDropdown.classList.add('hidden');
+          }
+        });
+      }
+    } catch (err) {
+      console.error('Lỗi khởi tạo menu sidebar:', err);
+    }
 
-    if (hasCoords) {
-      mapPickup = [parseFloat(mapEl.dataset.pickupLat), parseFloat(mapEl.dataset.pickupLng)];
-      mapDropoff = [parseFloat(mapEl.dataset.dropoffLat), parseFloat(mapEl.dataset.dropoffLng)];
+    // --- Bản đồ: tự động xin vị trí tài xế và vẽ đường đến điểm đón ngay khi tải trang ---
+    try {
+      var mapEl = document.getElementById('trip-map');
+      if (!mapEl) return; // không có chuyến sắp khởi hành -> không có bản đồ để vẽ
 
-      pickupMarker = L.marker(mapPickup).addTo(tripMap)
-        .bindPopup('Điểm đón: ' + (mapEl.dataset.pickupLabel || ''));
-      dropoffMarker = L.marker(mapDropoff).addTo(tripMap)
-        .bindPopup('Điểm trả: ' + (mapEl.dataset.dropoffLabel || ''));
+      // Nếu cả 2 CDN (unpkg + jsdelivr) đều load lỗi, hoặc L vẫn chưa sẵn sàng
+      // sau một khoảng chờ ngắn (fallback script cần thời gian để chèn + tải),
+      // hiện thông báo lỗi ngay trên khung bản đồ thay vì để trống im lặng.
+      function showMapError(message) {
+        mapEl.innerHTML = '';
+        mapEl.style.display = 'flex';
+        mapEl.style.alignItems = 'center';
+        mapEl.style.justifyContent = 'center';
+        mapEl.style.textAlign = 'center';
+        mapEl.style.padding = '16px';
+        mapEl.style.color = 'var(--ink-faint,#9aa0a6)';
+        mapEl.style.fontSize = '13px';
+        mapEl.textContent = message;
+      }
 
-      routeLine = L.polyline([mapPickup, mapDropoff], { color: '#2f6fed', weight: 4, opacity: 0.7 }).addTo(tripMap);
-      tripMap.fitBounds(routeLine.getBounds(), { padding: [30, 30] });
-    } else {
-      L.popup()
-        .setLatLng(defaultCenter)
-        .setContent('Chưa có toạ độ điểm đón/trả cho chuyến này.')
-        .openOn(tripMap);
+      function initMap() {
+        if (typeof L === 'undefined') {
+          showMapError('Không thể tải thư viện bản đồ (Leaflet). Vui lòng kiểm tra kết nối mạng rồi tải lại trang.');
+          return;
+        }
+
+        var hasCoords = mapEl.dataset.hasCoords === '1';
+        var defaultCenter = [21.0278, 105.8342]; // Mặc định Hà Nội
+
+        if (hasCoords) {
+          mapPickup = [parseFloat(mapEl.dataset.pickupLat), parseFloat(mapEl.dataset.pickupLng)];
+          tripMap = L.map('trip-map', { scrollWheelZoom: false }).setView(mapPickup, 14);
+        } else {
+          tripMap = L.map('trip-map', { scrollWheelZoom: false }).setView(defaultCenter, 12);
+        }
+
+        // Nguồn tile chính: CARTO (miễn phí, dùng dữ liệu bản đồ gốc từ
+        // OpenStreetMap nhưng phục vụ qua hạ tầng CDN của CARTO, ít bị chặn/giới
+        // hạn traffic hơn nhiều so với gọi thẳng vào tile.openstreetmap.org).
+        // Nếu CARTO cũng lỗi, tự động chuyển sang tile.openstreetmap.org làm dự phòng.
+        var primaryTileUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+        var fallbackTileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+        var tileAttribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+
+        var osmTileLayer = L.tileLayer(primaryTileUrl, {
+          maxZoom: 19,
+          subdomains: 'abcd',
+          attribution: tileAttribution
+        }).addTo(tripMap);
+
+        // Nếu tile ảnh bị chặn (CSP, firewall, hoặc nhà cung cấp giới hạn traffic),
+        // marker/đường đi (vẽ bằng SVG) vẫn hiện bình thường nhưng nền bản đồ
+        // sẽ trống trơn và không có lỗi rõ ràng nào cả -> chủ động phát hiện và báo.
+        var triedFallback = false;
+        var tileErrorShown = false;
+        osmTileLayer.on('tileerror', function () {
+          if (!triedFallback) {
+            // Thử ngay lập tức nguồn dự phòng trước khi báo lỗi hẳn cho người dùng.
+            triedFallback = true;
+            console.warn('Nguồn tile chính (CARTO) lỗi, đang thử tile.openstreetmap.org...');
+            tripMap.removeLayer(osmTileLayer);
+            osmTileLayer = L.tileLayer(fallbackTileUrl, {
+              maxZoom: 19,
+              attribution: tileAttribution
+            }).addTo(tripMap);
+            osmTileLayer.on('tileerror', function () {
+              if (tileErrorShown) return;
+              tileErrorShown = true;
+              console.error('Cả 2 nguồn tile (CARTO và tile.openstreetmap.org) đều lỗi. ' +
+                'Có thể do mạng/tường lửa/proxy chặn domain ảnh bản đồ. ' +
+                'Marker và đường đi vẫn hiện vì đó là lớp vector, không phải ảnh.');
+              var hint = document.createElement('div');
+              hint.style.cssText = 'position:absolute;bottom:6px;left:6px;right:6px;z-index:1000;' +
+                'background:rgba(255,255,255,0.95);border-radius:8px;padding:6px 10px;' +
+                'font-size:11.5px;color:#b3261e;pointer-events:none;';
+              hint.textContent = '⚠️ Không tải được nền bản đồ (cả 2 nguồn tile đều bị chặn). Xem Console để biết chi tiết.';
+              mapEl.style.position = 'relative';
+              mapEl.appendChild(hint);
+            });
+          }
+        });
+
+        setTimeout(function () { tripMap.invalidateSize(); }, 200);
+        window.addEventListener('resize', function () { tripMap.invalidateSize(); });
+
+        if (hasCoords) {
+          pickupMarker = L.marker(mapPickup).addTo(tripMap)
+            .bindPopup('Khách đang chờ ở đây: ' + (mapEl.dataset.pickupLabel || '')).openPopup();
+
+          // Tự động xin vị trí tài xế và vẽ đường ngay khi bản đồ sẵn sàng,
+          // không chờ tài xế phải bấm nút nữa.
+          locateAndRoute({ silent: true });
+        } else {
+          L.popup()
+            .setLatLng(defaultCenter)
+            .setContent('Chưa có toạ độ điểm đón cho chuyến này.')
+            .openOn(tripMap);
+        }
+      }
+
+      if (window.__leafletLoadFailed) {
+        showMapError('Không thể tải thư viện bản đồ (Leaflet). Vui lòng kiểm tra kết nối mạng rồi tải lại trang.');
+      } else if (typeof L !== 'undefined') {
+        initMap();
+      } else {
+        // unpkg có thể vẫn đang tải, hoặc script fallback jsdelivr vừa được chèn
+        // và đang tải — đợi một chút rồi thử lại trước khi báo lỗi hẳn.
+        var attempts = 0;
+        var waitForLeaflet = setInterval(function () {
+          attempts++;
+          if (typeof L !== 'undefined') {
+            clearInterval(waitForLeaflet);
+            initMap();
+          } else if (attempts >= 20 || window.__leafletLoadFailed) { // ~5 giây
+            clearInterval(waitForLeaflet);
+            showMapError('Không thể tải thư viện bản đồ (Leaflet). Vui lòng kiểm tra kết nối mạng rồi tải lại trang.');
+          }
+        }, 250);
+      }
+    } catch (err) {
+      console.error('Lỗi khởi tạo bản đồ:', err);
     }
   });
 
-  function locateMe() {
+  // Lấy vị trí tài xế và vẽ đường đến điểm đón.
+  // options.silent = true -> gọi tự động lúc tải trang, không hiện alert làm phiền
+  // nếu tài xế chưa cấp quyền / từ chối; chỉ hiện lỗi khi tài xế chủ động bấm nút.
+  function locateAndRoute(options) {
+    var silent = options && options.silent;
+
     if (!tripMap) return;
+    if (!mapPickup) {
+        if (!silent) showToast('Không có toạ độ điểm đón để chỉ đường.', 'error');
+        return;
+    }
     if (!navigator.geolocation) {
-      alert('Trình duyệt không hỗ trợ định vị.');
+      if (!silent) showToast('Trình duyệt của bạn không hỗ trợ định vị.', 'error');
       return;
     }
+
+    // Gửi yêu cầu xin quyền vị trí — trình duyệt sẽ tự bung hộp thoại xác nhận
+    // ngay khi hàm này được gọi (kể cả lúc tải trang tự động).
     navigator.geolocation.getCurrentPosition(function (pos) {
-      var latlng = [pos.coords.latitude, pos.coords.longitude];
+      var myLoc = [pos.coords.latitude, pos.coords.longitude];
+
       if (myLocationMarker) {
-        myLocationMarker.setLatLng(latlng);
+        myLocationMarker.setLatLng(myLoc);
       } else {
-        myLocationMarker = L.circleMarker(latlng, {
+        myLocationMarker = L.circleMarker(myLoc, {
           radius: 8, color: '#16a34a', fillColor: '#16a34a', fillOpacity: 0.9
-        }).addTo(tripMap).bindPopup('Vị trí của bạn');
+        }).addTo(tripMap).bindPopup('Vị trí hiện tại của bạn').openPopup();
       }
-      tripMap.setView(latlng, 14);
-      myLocationMarker.openPopup();
-    }, function () {
-      alert('Không thể lấy vị trí của bạn. Vui lòng cấp quyền định vị cho trình duyệt.');
+
+      if (routeLine) {
+          tripMap.removeLayer(routeLine);
+      }
+
+      // Vẽ đường đứt nét từ Vị trí tài xế -> Điểm đón
+      routeLine = L.polyline([myLoc, mapPickup], { color: '#2f6fed', weight: 4, opacity: 0.8, dashArray: '8, 8' }).addTo(tripMap);
+
+      // Zoom lại bản đồ sao cho vừa khung hình cả Tài xế lẫn Khách
+      tripMap.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+
+    }, function (err) {
+      if (silent) {
+        // Gọi tự động lúc tải trang: không làm phiền bằng alert, chỉ log lại.
+        // Tài xế vẫn có thể bấm nút "Lấy vị trí & Chỉ đường" để thử lại thủ công.
+        console.warn('Không lấy được vị trí tự động:', err.message);
+        return;
+      }
+      if (err.code === 1) {
+          showToast('Bạn đã từ chối cấp quyền vị trí. Vui lòng bật lại quyền vị trí trên trình duyệt để vẽ đường đi.', 'error');
+      } else {
+          showToast('Không thể lấy vị trí. Vui lòng kiểm tra GPS / mạng của bạn.', 'error');
+      }
+    }, {
+        enableHighAccuracy: true, // Bật chế độ định vị GPS chính xác cao
+        timeout: 10000,
+        maximumAge: 0
     });
   }
 
-  function fitRoute() {
-    if (!tripMap) return;
-    if (routeLine) {
-      tripMap.fitBounds(routeLine.getBounds(), { padding: [30, 30] });
-    } else {
-      alert('Chuyến này chưa có toạ độ điểm đón/trả để hiển thị toàn tuyến.');
-    }
-  }
-
+  // Mở Google Maps (Lấy đích đến là điểm đón, điểm xuất phát tự động theo GPS điện thoại)
   function openInGoogleMaps() {
-    if (mapPickup && mapDropoff) {
-      var url = 'https://www.google.com/maps/dir/?api=1&origin=' + mapPickup.join(',') +
-                '&destination=' + mapDropoff.join(',');
+    if (mapPickup) {
+      var url = 'https://www.google.com/maps/dir/?api=1&destination=' + mapPickup.join(',');
       window.open(url, '_blank');
     } else {
       var mapEl = document.getElementById('trip-map');
-      var origin = encodeURIComponent(mapEl ? mapEl.dataset.pickupLabel : '');
-      var dest = encodeURIComponent(mapEl ? mapEl.dataset.dropoffLabel : '');
-      var url = 'https://www.google.com/maps/dir/?api=1&origin=' + origin + '&destination=' + dest;
+      var dest = encodeURIComponent(mapEl ? mapEl.dataset.pickupLabel : '');
+      var url = 'https://www.google.com/maps/dir/?api=1&destination=' + dest;
       window.open(url, '_blank');
     }
   }

@@ -14,6 +14,7 @@ public class DriverDocumentVm
     public DateTime CreatedAt { get; set; }
 }
 
+[Microsoft.AspNetCore.Authorization.Authorize(Policy = "DriverOnly")]
 public class HoSoModel : PageModel
 {
     public string FullName { get; private set; } = "";
@@ -23,6 +24,8 @@ public class HoSoModel : PageModel
     public DateTime CreatedAt { get; private set; }
     public string VehicleType { get; private set; } = "";
     public string LicensePlate { get; private set; } = "";
+    public int SeatCount { get; private set; }
+    public string OperationArea { get; private set; } = "";
     public decimal Rating { get; private set; }
 
     public int PendingCount { get; private set; }
@@ -52,12 +55,12 @@ public class HoSoModel : PageModel
 
     public async Task OnGetAsync()
     {
-        var driverId = Constants.DriverId;
+        var driverId = CurrentUser.DriverId(User);
         await using var conn = await Db.OpenAsync();
 
         // 1. Thông tin cá nhân & xe
         await using (var cmd = new MySqlCommand(@"SELECT u.full_name, u.avatar, u.phone, u.status AS account_status, u.created_at,
-                              dp.vehicle_type, dp.license_plate, dp.rating
+                              dp.vehicle_type, dp.license_plate, dp.seat_count, dp.operation_area, dp.rating
                        FROM users u JOIN driver_profiles dp ON u.user_id = dp.driver_id
                        WHERE u.user_id = @driver_id", conn))
         {
@@ -72,6 +75,8 @@ public class HoSoModel : PageModel
                 CreatedAt = reader.GetDateTime("created_at");
                 VehicleType = reader.GetString("vehicle_type");
                 LicensePlate = reader.GetString("license_plate");
+                SeatCount = reader.GetInt32("seat_count");
+                OperationArea = reader.IsDBNull(reader.GetOrdinal("operation_area")) ? "" : reader.GetString("operation_area");
                 Rating = reader.GetDecimal("rating");
             }
         }

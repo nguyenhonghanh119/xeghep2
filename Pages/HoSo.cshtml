@@ -12,6 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
+<script src="/auth-fetch.js"></script>
 </head>
 <body>
 <div class="shell">
@@ -26,7 +27,7 @@
     </nav>
     <div class="sidebar-foot">
       <div class="av">@Model.AvatarLetter</div>
-      <div><b>@Model.FullName</b><span>★ @Model.Rating.ToString("0.0") · @(Model.AllApproved ? "Đã duyệt" : "Chờ duyệt")</span></div>
+      <div><b>@Model.FullName</b><span>★ @Model.Rating.ToString("0.0") · @(Model.AllApproved ? "Đã duyệt" : "Chờ duyệt")</span><a href="/Login" onclick="return logoutDriver(event)">🚪 Đăng xuất</a></div>
     </div>
   </aside>
 
@@ -56,6 +57,8 @@
               <div class="field"><label>Số điện thoại</label><div class="input"><input name="phone" value="@Model.Phone"></div></div>
               <div class="field"><label>Loại xe</label><div class="input"><input name="vehicle" value="@Model.VehicleType"></div></div>
               <div class="field"><label>Biển số</label><div class="input"><input name="plate" value="@Model.LicensePlate"></div></div>
+              <div class="field"><label>Số ghế phục vụ</label><div class="input"><input name="seatCount" type="number" min="1" max="16" value="@Model.SeatCount"></div></div>
+              <div class="field"><label>Khu vực hoạt động</label><div class="input"><input name="operationArea" value="@Model.OperationArea" placeholder="Ví dụ: Hà Nội, Ninh Bình"></div></div>
             </form>
           </div>
 
@@ -71,6 +74,7 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;white-space:nowrap">
                   <span class="doc-status @status.Css" data-status-label>@status.Label</span>
+                  <a class="btn btn-outline btn-sm" href="/api/driver/documents/@doc.DocId/file" target="_blank" rel="noopener">Xem</a>
                   <button type="button" class="btn btn-outline btn-sm" onclick="replaceDocument(this)">Cập nhật</button>
                   <button type="button" class="btn btn-outline btn-sm" onclick="deleteDocument(this)">Xóa</button>
                 </div>
@@ -80,7 +84,10 @@
                 <p id="no-docs-msg" style="font-size:13px;color:var(--ink-faint)">Chưa nộp giấy tờ nào.</p>
               }
             </div>
-            <button class="btn btn-outline" style="margin-top:6px" onclick="uploadDocument()">+ Tải lên giấy tờ mới</button>
+            <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+              <input id="new-doc-name" maxlength="100" placeholder="Tên giấy tờ, ví dụ: Giấy khám sức khỏe" style="flex:1;min-width:240px;padding:9px">
+              <button class="btn btn-outline" onclick="uploadDocument()">+ Tải lên giấy tờ mới</button>
+            </div>
             <input type="file" id="doc-file-input" class="hidden" accept=".jpg,.jpeg,.png,.pdf" onchange="onDocFileSelected(event)">
           </div>
 
@@ -112,14 +119,14 @@
       });
       const result = await res.json();
       if (!result.ok) {
-        alert(result.message || 'Không thể lưu thay đổi.');
+        showToast(result.message || 'Không thể lưu thay đổi.', 'error');
         return;
       }
       document.getElementById('profile-name-display').textContent = result.fullName;
       document.getElementById('profile-avatar').textContent = result.fullName.trim().split(' ').pop().charAt(0);
-      alert('Đã gửi thông tin cho admin, hồ sơ đang chờ phê duyệt.');
+      showToast('Đã gửi thông tin cho admin, hồ sơ đang chờ phê duyệt.');
     } catch (err) {
-      alert('Lỗi kết nối, vui lòng thử lại.');
+      showToast('Lỗi kết nối, vui lòng thử lại.', 'error');
     } finally {
       btn.disabled = false;
       btn.textContent = originalText;
@@ -127,12 +134,14 @@
   }
 
   function uploadDocument(){
-    const docName = prompt('Nhập tên loại giấy tờ (VD: Giấy khám sức khoẻ):');
-    if (!docName) return;
+    const nameInput = document.getElementById('new-doc-name');
+    const docName = nameInput.value.trim();
+    if (!docName) { nameInput.focus(); showToast('Vui lòng nhập tên loại giấy tờ.', 'error'); return; }
     const docType = docName.toLowerCase()
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'other_' + Date.now();
     pendingUpload = { docType, docName, btn: null };
+    nameInput.value = '';
     document.getElementById('doc-file-input').click();
   }
 
@@ -157,12 +166,12 @@
       const res = await fetch('/upload-document.php', { method: 'POST', body: fd });
       const result = await res.json();
       if (!result.ok) {
-        alert(result.message || 'Tải lên thất bại.');
+        showToast(result.message || 'Tải lên thất bại.', 'error');
         return;
       }
       addOrUpdateDocRow(docType, docName, result.docId);
     } catch (err) {
-      alert('Lỗi kết nối, vui lòng thử lại.');
+      showToast('Lỗi kết nối, vui lòng thử lại.', 'error');
     } finally {
       pendingUpload = null;
     }
@@ -173,7 +182,7 @@
     const docId = row.dataset.docId;
     const docName = row.querySelector('[data-doc-name]').textContent;
 
-    if (!confirm(`Xóa giấy tờ "${docName}"?`)) return;
+    if (!await askConfirm(`Xóa giấy tờ "${docName}"?`)) return;
 
     btn.disabled = true;
     try {
@@ -184,7 +193,7 @@
       });
       const result = await res.json();
       if (!result.ok) {
-        alert(result.message || 'Không thể xóa giấy tờ.');
+        showToast(result.message || 'Không thể xóa giấy tờ.', 'error');
         btn.disabled = false;
         return;
       }
@@ -199,7 +208,7 @@
         list.appendChild(p);
       }
     } catch (err) {
-      alert('Lỗi kết nối, vui lòng thử lại.');
+      showToast('Lỗi kết nối, vui lòng thử lại.', 'error');
       btn.disabled = false;
     }
   }

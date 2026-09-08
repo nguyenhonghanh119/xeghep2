@@ -14,9 +14,15 @@ public class ActivityVm
 
 public class PaxVm
 {
+    public string BookingId { get; set; } = "";
     public string FullName { get; set; } = "";
     public string? Avatar { get; set; }
     public int Seats { get; set; }
+    public string PaymentMethod { get; set; } = "";
+    public string PaymentStatus { get; set; } = "";
+    public string PickupAddress { get; set; } = "";
+    public string DropoffAddress { get; set; } = "";
+    public bool ReviewedByDriver { get; set; }
     public string FirstName => LastToken(FullName);
     private static string LastToken(string s)
     {
@@ -48,6 +54,7 @@ public class PeriodStatVm
     public decimal PrevPeriodRate { get; set; }
 }
 
+[Microsoft.AspNetCore.Authorization.Authorize(Policy = "DriverOnly")]
 public class IndexModel : PageModel
 {
     public string FullName { get; private set; } = "";
@@ -76,7 +83,7 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync()
     {
-        var driverId = Constants.DriverId;
+        var driverId = CurrentUser.DriverId(User);
         await using var conn = await Db.OpenAsync();
 
         // 1. Thông tin cá nhân và hồ sơ tài xế
@@ -152,7 +159,7 @@ public class IndexModel : PageModel
 
         // 6. Chuyến sắp khởi hành + danh sách khách
         await using (var cmd = new MySqlCommand(
-            "SELECT * FROM trips WHERE driver_id = @driver_id AND status = 'upcoming' ORDER BY departure_time ASC LIMIT 1", conn))
+            "SELECT * FROM trips WHERE driver_id = @driver_id AND status IN ('upcoming','full') ORDER BY departure_time ASC LIMIT 1", conn))
         {
             cmd.Parameters.AddWithValue("@driver_id", driverId);
             await using var reader = await cmd.ExecuteReaderAsync();
@@ -176,18 +183,24 @@ public class IndexModel : PageModel
 
         if (NextTrip is not null)
         {
-            await using var cmd = new MySqlCommand(@"SELECT u.full_name, u.avatar, b.seats
+            await using var cmd = new MySqlCommand(@"SELECT b.booking_id, u.full_name, u.avatar, b.seats, b.payment_method, b.payment_status,
+                       b.pickup_address, b.dropoff_address
                        FROM bookings b JOIN users u ON b.passenger_id = u.user_id
-                       WHERE b.trip_id = @trip_id AND b.status = 'approved'", conn);
+                       WHERE b.trip_id = @trip_id AND b.status IN ('confirmed','paid')", conn);
             cmd.Parameters.AddWithValue("@trip_id", NextTrip.TripId);
             await using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
                 PaxList.Add(new PaxVm
                 {
+                    BookingId = reader.GetString("booking_id"),
                     FullName = reader.GetString("full_name"),
                     Avatar = reader.IsDBNull(reader.GetOrdinal("avatar")) ? null : reader.GetString("avatar"),
-                    Seats = reader.GetInt32("seats")
+                    Seats = reader.GetInt32("seats"),
+                    PaymentMethod = reader.GetString("payment_method"),
+                    PaymentStatus = reader.GetString("payment_status"),
+                    PickupAddress = reader.GetString("pickup_address"),
+                    DropoffAddress = reader.GetString("dropoff_address")
                 });
             }
 
@@ -198,7 +211,8 @@ public class IndexModel : PageModel
         // 7. Hoạt động gần đây: đánh giá
         await using (var cmd = new MySqlCommand(@"SELECT u.full_name, r.rating, r.created_at
                        FROM reviews r JOIN users u ON r.passenger_id = u.user_id
-                       WHERE r.driver_id = @driver_id ORDER BY r.created_at DESC LIMIT 2", conn))
+                       WHERE r.moderation_status = 'visible' AND r.driver_id = @driver_id
+                       ORDER BY r.created_at DESC LIMIT 2", conn))
         {
             cmd.Parameters.AddWithValue("@driver_id", driverId);
             await using var reader = await cmd.ExecuteReaderAsync();

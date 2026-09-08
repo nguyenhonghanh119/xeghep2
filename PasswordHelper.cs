@@ -11,6 +11,7 @@ public static class PasswordHelper
     // Hàm dùng để kiểm tra mật khẩu khi đăng nhập hoặc rút tiền
     public static bool Verify(string password, string hash)
     {
-        return BCrypt.Net.BCrypt.Verify(password, hash);
+        try { return BCrypt.Net.BCrypt.Verify(password, hash); }
+        catch { return false; }
     }
 }

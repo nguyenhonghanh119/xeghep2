@@ -12,6 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<script src="/auth-fetch.js"></script>
 </head>
 <body>
 <div class="shell">
@@ -26,7 +27,7 @@
     </nav>
     <div class="sidebar-foot">
       <div class="av">@(Model.Avatar ?? "U")</div>
-      <div><b>@Model.FullName</b><span>★ @Model.Rating.ToString("0.0") · Đã duyệt</span></div>
+      <div><b>@Model.FullName</b><span>★ @Model.Rating.ToString("0.0") · Đã duyệt</span><a href="/Login" onclick="return logoutDriver(event)">🚪 Đăng xuất</a></div>
     </div>
   </aside>
 
@@ -54,7 +55,11 @@
           </div>
           <div class="pax-list">
             @foreach (var p in trip.Pax) {
-              <div class="pax-chip"><span class="av">@(p.Avatar ?? p.FullName.Split(' ').LastOrDefault()?.Substring(0, 1))</span> @(p.FullName.Split(' ').LastOrDefault()) · @p.Seats ghế</div>
+              <div class="pax-chip" data-booking-id="@p.BookingId"><span class="av">@(p.Avatar ?? p.FullName.Split(' ').LastOrDefault()?.Substring(0, 1))</span> @(p.FullName.Split(' ').LastOrDefault()) · @p.Seats ghế <span class="sub">Đón: @p.PickupAddress · Trả: @p.DropoffAddress</span>
+                @if (p.PaymentMethod == "cash" && p.PaymentStatus != "paid") {
+                  <button class="btn btn-outline btn-sm" onclick="confirmCash(this)">Xác nhận tiền mặt</button>
+                }
+              </div>
             }
             @if (!trip.Pax.Any()) {
               <span style="font-size:12.5px;color:var(--ink-faint);">Chưa có hành khách đặt chỗ</span>
@@ -62,8 +67,9 @@
           </div>
           <div class="bottom">
             <span style="font-size:12.5px;color:var(--ink-soft)">@trip.SeatsBooked/@trip.TotalSeats ghế đã đặt</span>
-            <button class="btn btn-green btn-sm" onclick="startTrip(this)">Bắt đầu chuyến</button>
+            <div style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" onclick="showCancelTrip(this)">Xin hủy/đổi tài xế</button><button class="btn btn-green btn-sm" onclick="startTrip(this)">Bắt đầu chuyến</button></div>
           </div>
+          <div class="cancel-trip-form hidden" style="margin-top:10px"><input maxlength="500" placeholder="Nhập lý do xin hủy chuyến" style="width:100%;padding:9px"><button class="btn btn-coral btn-sm" style="margin-top:6px" onclick="requestTripCancellation(this)">Gửi yêu cầu</button></div>
         </div>
         }
       </div>
@@ -82,7 +88,7 @@
           </div>
           <div class="pax-list">
             @foreach (var p in trip.Pax) {
-              <div class="pax-chip"><span class="av">@(p.Avatar ?? p.FullName.Split(' ').LastOrDefault()?.Substring(0, 1))</span> @(p.FullName.Split(' ').LastOrDefault()) · @p.Seats ghế</div>
+              <div class="pax-chip"><span class="av">@(p.Avatar ?? p.FullName.Split(' ').LastOrDefault()?.Substring(0, 1))</span> @(p.FullName.Split(' ').LastOrDefault()) · @p.Seats ghế <span class="sub">Đón: @p.PickupAddress · Trả: @p.DropoffAddress</span></div>
             }
             @if (!trip.Pax.Any()) {
               <span style="font-size:12.5px;color:var(--ink-faint);">Không có hành khách</span>
@@ -108,12 +114,40 @@
             <div class="route-line"><div class="node start"></div><div class="node end"></div></div>
             <div class="pt end"><div class="city">@trip.RouteTo</div><div class="sub">&nbsp;</div></div>
           </div>
+          <div class="pax-list">
+            @foreach (var p in trip.Pax) {
+              <div class="pax-chip" data-booking-id="@p.BookingId">
+                <span class="av">@(p.Avatar ?? p.FullName.Split(' ').LastOrDefault()?.Substring(0, 1))</span> @(p.FullName.Split(' ').LastOrDefault())
+                @if (p.ReviewedByDriver) {
+                  <span class="doc-status approved">Đã đánh giá</span>
+                } else {
+                  <button class="btn btn-outline btn-sm" onclick="showReview(this)">Đánh giá</button>
+                  <span class="review-form hidden" style="width:100%">
+                    <select aria-label="Số sao">
+                      <option value="5">5 sao</option>
+                      <option value="4">4 sao</option>
+                      <option value="3">3 sao</option>
+                      <option value="2">2 sao</option>
+                      <option value="1">1 sao</option>
+                    </select>
+                    <input maxlength="500" placeholder="Nhận xét (không bắt buộc)">
+                    <button class="btn btn-primary btn-sm" onclick="submitReview(this)">Gửi</button>
+                  </span>
+                }
+                <button class="btn btn-coral btn-sm" onclick="showPassengerComplaint(this)">Khiếu nại</button>
+                <span class="complaint-form hidden" style="width:100%"><input class="complaint-content" maxlength="2000" placeholder="Nội dung khiếu nại"><input class="complaint-file" type="file" accept="image/jpeg,image/png,application/pdf"><button class="btn btn-coral btn-sm" onclick="submitPassengerComplaint(this)">Gửi</button></span>
+              </div>
+            }
+          </div>
           <div class="bottom">
             <span style="font-size:12.5px;color:var(--ink-soft)">Thu nhập: @(Model.DoneIncome.ContainsKey(trip.TripId) ? Model.DoneIncome[trip.TripId].ToString("N0") : "0")đ</span>
-            <button class="btn btn-outline btn-sm" onclick="viewTripDetail(this)">Xem chi tiết</button>
           </div>
         </div>
         }
+      </div>
+      <div class="card" style="margin-top:16px">
+        <b>Khiếu nại đã gửi</b>
+        <div id="complaint-history" style="margin-top:8px;color:var(--ink-soft);font-size:13px">Đang tải…</div>
       </div>
     </div>
   </main>
@@ -142,7 +176,7 @@
       .then(res => res.json())
       .then(data => {
         if (!data.ok) {
-          alert(data.message || 'Không thể bắt đầu chuyến.');
+          showToast(data.message || 'Không thể bắt đầu chuyến.', 'error');
           btn.disabled = false;
           btn.textContent = originalText;
           return;
@@ -150,50 +184,135 @@
         location.reload();
       })
       .catch(() => {
-        alert('Lỗi kết nối, vui lòng thử lại.');
+        showToast('Lỗi kết nối, vui lòng thử lại.', 'error');
         btn.disabled = false;
         btn.textContent = originalText;
       });
   }
+
+  function confirmCash(btn){
+    const chip = btn.closest('.pax-chip');
+    btn.disabled = true;
+    fetch('/api/driver/bookings/' + chip.dataset.bookingId + '/confirm-cash', { method: 'POST' })
+      .then(res => res.json().then(data => ({ ok: res.ok, data })))
+      .then(result => { if (!result.ok) throw new Error(result.data.message || 'Không thể xác nhận tiền mặt.'); btn.textContent = 'Đã nhận tiền'; })
+      .catch(err => { showToast(err.message, 'error'); btn.disabled = false; });
+  }
+
+  function showCancelTrip(btn){
+    btn.closest('.trip-manage-card').querySelector('.cancel-trip-form').classList.remove('hidden');
+  }
+
+  function requestTripCancellation(btn){
+    const card = btn.closest('.trip-manage-card');
+    const reason = card.querySelector('.cancel-trip-form input').value.trim();
+    if (!reason) { showToast('Vui lòng nhập lý do.', 'error'); return; }
+    btn.disabled = true;
+    fetch('/api/driver/trips/' + card.dataset.tripId + '/cancel-request', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason })
+    }).then(res => res.json().then(data => ({ ok: res.ok, data })))
+      .then(result => { if (!result.ok) throw new Error(result.data.message || 'Không thể gửi yêu cầu.'); location.reload(); })
+      .catch(err => { showToast(err.message, 'error'); btn.disabled = false; });
+  }
+
+  function showReview(btn){
+    btn.classList.add('hidden');
+    btn.closest('.pax-chip').querySelector('.review-form').classList.remove('hidden');
+  }
+
+  function submitReview(btn){
+    const chip = btn.closest('.pax-chip');
+    const form = btn.closest('.review-form');
+    btn.disabled = true;
+    fetch('/api/driver/bookings/' + chip.dataset.bookingId + '/review', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rating: Number(form.querySelector('select').value), comment: form.querySelector('input').value })
+    }).then(res => res.json().then(data => ({ ok: res.ok, data })))
+      .then(result => { if (!result.ok) throw new Error(result.data.message || 'Không thể gửi đánh giá.'); form.innerHTML = '<span class="doc-status approved">Đã đánh giá</span>'; })
+      .catch(err => { showToast(err.message, 'error'); btn.disabled = false; });
+  }
+
+  function showPassengerComplaint(btn){
+    btn.closest('.pax-chip').querySelector('.complaint-form').classList.remove('hidden');
+  }
+
+  async function submitPassengerComplaint(btn){
+    const chip = btn.closest('.pax-chip');
+    const form = btn.closest('.complaint-form');
+    const content = form.querySelector('.complaint-content').value.trim();
+    const file = form.querySelector('.complaint-file').files[0];
+    if(!content){ showToast('Vui lòng nhập nội dung khiếu nại.', 'error'); return; }
+    btn.disabled = true;
+    try {
+      const res = await fetch('/api/driver/bookings/' + chip.dataset.bookingId + '/complaints', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content })
+      });
+      const data = await res.json();
+      if(!res.ok) throw new Error(data.message || 'Không thể gửi khiếu nại.');
+      if(file){
+        const fd = new FormData(); fd.append('file', file);
+        const upload = await fetch('/api/driver/complaints/' + data.complaint_id + '/attachments', { method:'POST', body:fd });
+        const uploadData = await upload.json();
+        if(!upload.ok) throw new Error('Khiếu nại đã tạo nhưng chưa lưu được bằng chứng: ' + (uploadData.message || 'Lỗi tải file.'));
+      }
+      form.innerHTML = '<span class="doc-status approved">Đã gửi khiếu nại</span>';
+      loadComplaintHistory();
+    } catch(err) { showToast(err.message, 'error'); btn.disabled = false; }
+  }
+
+  function loadComplaintHistory(){
+    const container = document.getElementById('complaint-history');
+    fetch('/api/driver/complaints/mine')
+      .then(res => { if(!res.ok) throw new Error(); return res.json(); })
+      .then(items => {
+        container.textContent = '';
+        if(!items.length){ container.textContent = 'Chưa có khiếu nại.'; return; }
+        items.forEach(item => {
+          const line = document.createElement('div');
+          line.style.marginBottom = '6px';
+          line.textContent = `${item.complaint_id} · Chuyến ${item.trip_id} · ${item.status}${item.resolution_note ? ' · ' + item.resolution_note : ''}`;
+          container.appendChild(line);
+        });
+      })
+      .catch(() => { container.textContent = 'Không tải được lịch sử khiếu nại.'; });
+  }
+
+  loadComplaintHistory();
 
   function completeTrip(btn){
     const card = btn.closest('.trip-manage-card');
     const tripId = card.dataset.tripId;
 
-    const confirmed = confirm('Xác nhận đã hoàn thành chuyến đi ' + tripId + '?\nSố tiền chuyến này sẽ được cộng vào thu nhập của bạn.');
-    if (!confirmed) return;
+    askConfirm('Xác nhận đã hoàn thành chuyến đi ' + tripId + '?\nSố tiền chuyến này sẽ được cộng vào thu nhập của bạn.').then(confirmed => {
+      if (!confirmed) return;
 
-    btn.disabled = true;
-    const originalText = btn.textContent;
-    btn.textContent = 'Đang xử lý…';
+      btn.disabled = true;
+      const originalText = btn.textContent;
+      btn.textContent = 'Đang xử lý…';
 
-    fetch('complete-trip.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ trip_id: tripId })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (!data.ok) {
-          alert(data.message || 'Không thể hoàn thành chuyến.');
+      fetch('complete-trip.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trip_id: tripId })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (!data.ok) {
+            showToast(data.message || 'Không thể hoàn thành chuyến.', 'error');
+            btn.disabled = false;
+            btn.textContent = originalText;
+            return;
+          }
+          location.reload();
+        })
+        .catch(() => {
+          showToast('Lỗi kết nối, vui lòng thử lại.', 'error');
           btn.disabled = false;
           btn.textContent = originalText;
-          return;
-        }
-        location.reload();
-      })
-      .catch(() => {
-        alert('Lỗi kết nối, vui lòng thử lại.');
-        btn.disabled = false;
-        btn.textContent = originalText;
-      });
+        });
+    });
   }
 
-  function viewTripDetail(btn){
-    const card = btn.closest('.trip-manage-card');
-    const tripId = card.dataset.tripId;
-    alert('Xem chi tiết chuyến ' + tripId + ' (chưa có trang chi tiết).');
-  }
 </script>
 </body>
 </html>

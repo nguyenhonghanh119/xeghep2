@@ -13,20 +13,74 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 <style>
-  .withdraw-wrap{ max-width:520px; }
-  .balance-banner{ display:flex; justify-content:space-between; align-items:center; background:linear-gradient(135deg,#111827,#1f2937); color:#fff; border-radius:16px; padding:22px 24px; margin-bottom:20px; }
-  .balance-banner .lbl{ font-size:12.5px; opacity:.75; margin-bottom:6px; }
-  .balance-banner .val{ font-size:26px; font-weight:700; font-family:'IBM Plex Mono', monospace; }
-  .balance-banner .pending-note{ font-size:12px; opacity:.8; margin-top:6px; }
-  .quick-amounts{ display:flex; gap:8px; margin:10px 0 18px; flex-wrap:wrap; }
-  .quick-amounts button{ padding:8px 14px; border-radius:20px; border:1px solid var(--border,#d1d5db); background:#fff; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
-  .quick-amounts button:hover{ border-color:var(--primary,#2563eb); color:var(--primary,#2563eb); }
-  #new-bank-fields{ display:none; margin-top:10px; padding:14px; background:var(--bg,#f5f6f8); border-radius:10px; }
-  .back-link{ display:inline-flex; align-items:center; gap:6px; font-size:13.5px; color:var(--ink-soft,#6b7280); text-decoration:none; margin-bottom:16px; }
-  .back-link:hover{ color:var(--primary,#2563eb); }
-  .sla-note{ display:flex; gap:8px; align-items:flex-start; background:#EFF6FF; color:#1D4ED8; border-radius:10px; padding:10px 12px; font-size:12.5px; margin-top:10px; }
-  .input-plain{ width:100%; padding:10px; border:1px solid var(--border,#d1d5db); border-radius:8px; box-sizing:border-box; font-family:inherit; }
+  .sidebar-foot { position: relative; cursor: pointer; user-select: none; transition: background 0.2s; border-radius: 12px; padding: 10px; margin: 0 -10px; }
+  .sidebar-foot:hover { background: rgba(255, 255, 255, 0.08); }
+  .profile-dropdown { position: absolute; bottom: calc(100% + 5px); left: 0; right: 0; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 8px; box-shadow: 0 4px 16px rgba(18,33,58,0.15); display: flex; flex-direction: column; gap: 4px; z-index: 100; }
+  .profile-dropdown.hidden { display: none !important; }
+  .profile-dropdown a { color: var(--navy); padding: 10px 12px; border-radius: 8px; font-size: 13.5px; font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 10px; transition: 0.15s; }
+  .profile-dropdown a:hover { background: var(--fog); }
+  .profile-dropdown a.logout { color: var(--coral); }
+  .profile-dropdown a.logout:hover { background: var(--coral-dim); }
+
+  .withdraw-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 20px; align-items: start; }
+  @@media (max-width: 980px) { .withdraw-grid { grid-template-columns: 1fr; } }
+
+  .balance-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+  .balance-box { flex: 1; min-width: 200px; background: var(--fog); border-radius: 12px; padding: 14px 16px; }
+  .balance-box .lbl { font-size: 12px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .04em; }
+  .balance-box .val { font-family: "IBM Plex Mono", monospace; font-size: 22px; font-weight: 600; color: var(--navy); margin-top: 4px; }
+  .balance-box.pending .val { color: #92650E; }
+
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 6px; }
+  .form-group .hint { font-size: 12px; color: var(--ink-faint); margin-top: 4px; }
+  .form-control {
+    width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px;
+    font-size: 14px; font-family: inherit; color: var(--navy); background: #fff;
+  }
+  .form-control:focus { outline: none; border-color: var(--navy); }
+  .amount-input-wrap { position: relative; }
+  .amount-input-wrap .suffix {
+    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+    font-size: 13.5px; color: var(--ink-faint); font-weight: 600; pointer-events: none;
+  }
+  .quick-amounts { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .quick-amounts button {
+    border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 6px 12px;
+    font-size: 12.5px; font-weight: 600; color: var(--navy); cursor: pointer; transition: .15s;
+  }
+  .quick-amounts button:hover { background: var(--fog); }
+
+  .bank-options { display: flex; flex-direction: column; gap: 8px; }
+  .bank-option {
+    border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex;
+    align-items: center; gap: 10px; cursor: pointer; transition: .15s;
+  }
+  .bank-option:hover { background: var(--fog); }
+  .bank-option input[type="radio"] { accent-color: var(--navy); width: 16px; height: 16px; }
+  .bank-option .bi { font-size: 13.5px; font-weight: 600; color: var(--navy); }
+  .bank-option .bi small { display: block; font-weight: 400; color: var(--ink-faint); font-size: 12px; }
+
+  .new-bank-fields { display: none; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; padding: 12px; background: var(--fog); border-radius: 10px; }
+  .new-bank-fields.show { display: grid; }
+  .new-bank-fields .full { grid-column: 1 / -1; }
+
+  .alert { border-radius: 10px; padding: 12px 14px; font-size: 13.5px; margin-bottom: 16px; display: flex; gap: 10px; align-items: flex-start; }
+  .alert.error { background: var(--coral-dim); color: var(--coral); }
+  .alert.success { background: var(--green-dim); color: var(--green); }
+
+  .withdraw-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .withdraw-table th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-faint); padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  .withdraw-table td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  .withdraw-table tr:last-child td { border-bottom: none; }
+  .withdraw-table .amount { font-family: "IBM Plex Mono", monospace; font-weight: 600; }
+  .status-pill { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .empty-row td { text-align: center; color: var(--ink-faint); padding: 24px 10px; }
+
+  .btn-submit { width: 100%; margin-top: 4px; }
+  .info-note { font-size: 12px; color: var(--ink-faint); margin-top: 10px; line-height: 1.5; }
 </style>
+<script src="/auth-fetch.js"></script>
 </head>
 <body>
 <div class="shell">
@@ -34,206 +88,181 @@
     <div class="brand"><span class="dot-route">X</span><div>XeGhép<small>TÀI XẾ</small></div></div>
     <nav class="side-nav">
       <a href="/Index"><span class="ic">🏠</span> Tổng quan</a>
-      <a href="/YeuCauDatCho">
-          <span class="ic">📥</span> Yêu cầu đặt chỗ 
-          @if(Model.PendingCount > 0){
+      <a href="/YeuCauDatCho"><span class="ic">📥</span> Yêu cầu đặt chỗ
+        @if (Model.PendingCount > 0)
+        {
             <span class="badge-count">@Model.PendingCount</span>
-          }
+        }
       </a>
       <a href="/ChuyenCuaToi"><span class="ic">🧭</span> Chuyến của tôi</a>
       <a href="/ThuNhap" class="active"><span class="ic">₫</span> Thu nhập</a>
       <a href="/HoSo"><span class="ic">👤</span> Hồ sơ &amp; giấy tờ</a>
     </nav>
-    <div class="sidebar-foot">
+
+    <div class="sidebar-foot" id="sidebar-profile">
         <div class="av">@(Model.Avatar ?? "U")</div>
-        <div><b>@Model.FullName</b><span>★ @Model.Rating.ToString("0.0") · Đã duyệt</span></div>
+        <div>
+            <b>@Model.FullName</b>
+            <span>★ @Model.Rating.ToString("0.0") · Đã duyệt</span>
+        </div>
+
+        <div id="profile-dropdown" class="profile-dropdown hidden">
+            <a href="/HoSo">⚙️ Cài đặt tài khoản</a>
+            <a href="/Login" class="logout" onclick="return logoutDriver(event)">🚪 Đăng xuất</a>
+        </div>
     </div>
   </aside>
 
   <main class="main">
-    <div class="view withdraw-wrap">
-      <a href="/ThuNhap" class="back-link">← Quay lại Thu nhập</a>
+    <div class="view" id="view-withdraw">
 
       <div class="topbar">
-        <div><h1>Rút tiền</h1><p>Chuyển số dư khả dụng của bạn về tài khoản ngân hàng.</p></div>
+        <div><h1>Rút tiền</h1><p>Chuyển tiền từ ví XeGhép về tài khoản ngân hàng của bạn</p></div>
       </div>
 
-      @if (!string.IsNullOrEmpty(Model.ErrorMessage)) {
-        <div class="alert alert-error" style="padding:12px;border-radius:10px;background:var(--coral-dim,#fef2f2);color:var(--coral,#b91c1c);margin-bottom:16px;font-size:13.5px">@Model.ErrorMessage</div>
+      @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+      {
+        <div class="alert error">⚠️ <span>@Model.ErrorMessage</span></div>
+      }
+      @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+      {
+        <div class="alert success">✅ <span>@Model.SuccessMessage</span></div>
       }
 
-      @if (!string.IsNullOrEmpty(Model.SuccessMessage)) {
-        <div class="alert alert-success" style="padding:12px;border-radius:10px;background:var(--green-dim,#f0fdf4);color:var(--green,#16a34a);margin-bottom:16px;font-size:13.5px">@Model.SuccessMessage</div>
-      }
+      <div class="withdraw-grid">
+        <!-- Cột trái: Form rút tiền -->
+        <div class="card">
+          <div class="balance-row">
+            <div class="balance-box">
+              <div class="lbl">Số dư khả dụng để rút</div>
+              <div class="val">@Model.AvailableToWithdrawDisplay.ToString("N0")đ</div>
+            </div>
+            @if (Model.PendingWithdrawSum > 0)
+            {
+              <div class="balance-box pending">
+                <div class="lbl">Đang chờ duyệt</div>
+                <div class="val">@Model.PendingWithdrawSum.ToString("N0")đ</div>
+              </div>
+            }
+          </div>
 
-      <div class="balance-banner">
-        <div>
-          <div class="lbl">Số dư khả dụng</div>
-          <div class="val" id="balance-val">@Model.AvailableToWithdrawDisplay.ToString("N0")đ</div>
-          @if (Model.PendingWithdrawSum > 0) {
-            <div class="pending-note">Đang chờ Admin duyệt: @Model.PendingWithdrawSum.ToString("N0")đ</div>
-          }
+          <form method="post" id="withdraw-form" autocomplete="off">
+            <div class="form-group">
+              <label for="amount">Số tiền muốn rút</label>
+              <div class="amount-input-wrap">
+                <input type="number" class="form-control" id="amount" name="amount" min="@Model.MinWithdrawAmountInt"
+                       step="1000" placeholder="0" value="@(Model.PostedAmount > 0 ? Model.PostedAmount.ToString("0") : "")" required>
+                <span class="suffix">đ</span>
+              </div>
+              <div class="quick-amounts">
+                <button type="button" onclick="setAmount(100000)">100.000đ</button>
+                <button type="button" onclick="setAmount(500000)">500.000đ</button>
+                <button type="button" onclick="setAmount(1000000)">1.000.000đ</button>
+                <button type="button" onclick="setAmountMax()">Toàn bộ số dư</button>
+              </div>
+              <div class="hint">Số tiền rút tối thiểu: @Model.MinWithdrawAmountInt.ToString("N0")đ. Xử lý trong tối đa @Model.MaxProcessingHoursInt giờ.</div>
+            </div>
+
+            <div class="form-group">
+              <label>Tài khoản nhận tiền</label>
+              <div class="bank-options">
+                <label class="bank-option">
+                  <input type="radio" name="bank_choice" value="Vietcombank - ****4821 - @Model.FullName"
+                         @(Model.PostedBankChoice != "new" && Model.PostedBankChoice != "" ? "checked" : "")
+                         onchange="toggleNewBank(false)">
+                  <div class="bi">Vietcombank · ****4821<small>@Model.FullName</small></div>
+                </label>
+                <label class="bank-option">
+                  <input type="radio" name="bank_choice" value="new"
+                         @(Model.PostedBankChoice == "new" || Model.PostedBankChoice == "" ? "checked" : "")
+                         onchange="toggleNewBank(true)">
+                  <div class="bi">+ Thêm tài khoản ngân hàng khác</div>
+                </label>
+              </div>
+
+              <div class="new-bank-fields @(Model.PostedBankChoice == "new" ? "show" : "")" id="new-bank-fields">
+                <div class="full">
+                  <input type="text" class="form-control" name="new_bank_name" placeholder="Tên ngân hàng (VD: BIDV)" value="@Model.PostedNewBankName">
+                </div>
+                <input type="text" class="form-control" name="new_bank_number" placeholder="Số tài khoản" value="@Model.PostedNewBankNumber">
+                <input type="text" class="form-control" name="new_bank_holder" placeholder="Chủ tài khoản" value="@Model.PostedNewBankHolder">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="login_password">Xác nhận bằng mật khẩu đăng nhập</label>
+              <input type="password" class="form-control @(Model.PasswordError ? "input-error" : "")"
+                     id="login_password" name="login_password" placeholder="••••••••" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-submit">💸 Xác nhận yêu cầu rút tiền</button>
+            <p class="info-note">
+              Yêu cầu rút tiền sẽ được gửi tới Admin để duyệt và chuyển khoản thủ công.
+              Số dư ví chỉ bị trừ sau khi Admin xác nhận đã chuyển tiền thành công — số tiền đang chờ duyệt
+              được tạm khoá khỏi "Số dư khả dụng" để tránh rút trùng.
+            </p>
+          </form>
         </div>
-        <div style="font-size:26px">💵</div>
-      </div>
 
-      <div class="card">
-        <div class="list-title">Thông tin rút tiền</div>
-
-        <form method="POST" action="" id="withdraw-form" onsubmit="return false;">
-          <div class="field" style="margin-bottom:6px">
-            <label>Số tiền muốn rút</label>
-            <div class="input">₫<input type="number" name="amount" id="withdraw-amount" min="@Model.MinWithdrawAmountInt" step="10000" placeholder="VD: 500000" value="@(Model.PostedAmount > 0 ? Model.PostedAmount.ToString("0") : "")" required></div>
-          </div>
-          <div class="quick-amounts">
-            <button type="button" onclick="setAmount(200000)">200.000đ</button>
-            <button type="button" onclick="setAmount(500000)">500.000đ</button>
-            <button type="button" onclick="setAmount(1000000)">1.000.000đ</button>
-            <button type="button" onclick="setAmount(@((int)Model.AvailableToWithdrawDisplay))">Rút tất cả</button>
-          </div>
-
-          <div class="field">
-            <label>Tài khoản nhận tiền</label>
-            <div class="input">🏦
-              <select name="bank_choice" id="bank_choice" onchange="toggleNewBankFields()">
-                <option value="Vietcombank ****4821" @(Model.PostedBankChoice == "Vietcombank ****4821" ? "selected" : "")>Vietcombank ****4821</option>
-                <option value="MB Bank ****7710" @(Model.PostedBankChoice == "MB Bank ****7710" ? "selected" : "")>MB Bank ****7710</option>
-                <option value="new" @(Model.PostedBankChoice == "new" ? "selected" : "")>+ Thêm tài khoản ngân hàng khác</option>
-              </select>
-            </div>
-          </div>
-
-          <div id="new-bank-fields">
-            <div class="field" style="margin-bottom:12px">
-              <label>Tên ngân hàng</label>
-              <input type="text" name="new_bank_name" placeholder="VD: Techcombank" class="input-plain" value="@Model.PostedNewBankName">
-            </div>
-            <div class="field" style="margin-bottom:12px">
-              <label>Số tài khoản</label>
-              <input type="text" name="new_bank_number" placeholder="VD: 0123456789" class="input-plain" value="@Model.PostedNewBankNumber">
-            </div>
-            <div class="field">
-              <label>Chủ tài khoản</label>
-              <input type="text" name="new_bank_holder" placeholder="VD: NGUYEN VAN A" class="input-plain" value="@Model.PostedNewBankHolder">
-            </div>
-          </div>
-
-          <input type="hidden" name="login_password" id="login_password_hidden">
-
-          <button type="button" class="btn btn-primary btn-block" style="margin-top:18px;padding:12px;width:100%" onclick="openPasswordConfirm()">Xác nhận rút tiền</button>
-
-          <div class="sla-note">
-            ⏱️ <span>Yêu cầu sẽ được Admin xét duyệt trong tối đa <b>@Model.MaxProcessingHoursInt giờ</b>. Số dư ví chỉ bị trừ sau khi tiền đã chuyển thành công vào tài khoản ngân hàng của bạn.</span>
-          </div>
-        </form>
-      </div>
-
-      <div class="card">
-        <div class="list-title">Yêu cầu rút tiền gần đây</div>
-        <table>
-          <thead><tr><th>Ngày yêu cầu</th><th>Số tiền</th><th>Ngân hàng nhận</th><th>Trạng thái</th></tr></thead>
-          <tbody>
-            @foreach(var wd in Model.RecentWithdrawals) {
-            <tr>
-                <td class="mono">@wd.CreatedAt.ToString("dd/MM")</td>
-                <td class="mono">@wd.Amount.ToString("N0")đ</td>
-                <td>@wd.BankInfo</td>
-                <td>@Html.Raw(XeGhepApp.Pages.RutTienModel.GetWithdrawStatusHtml(wd.Status))</td>
-            </tr>
-            }
-            @if(!Model.RecentWithdrawals.Any()) {
-            <tr><td colspan="4" style="text-align:center;color:var(--ink-soft)">Chưa có yêu cầu rút tiền nào.</td></tr>
-            }
-          </tbody>
-        </table>
+        <!-- Cột phải: Lịch sử rút tiền -->
+        <div class="card">
+          <div class="list-title">Lịch sử rút tiền gần đây</div>
+          <table class="withdraw-table">
+            <thead>
+              <tr><th>Thời gian</th><th>Số tiền</th><th>Tài khoản</th><th>Trạng thái</th></tr>
+            </thead>
+            <tbody>
+              @foreach (var w in Model.RecentWithdrawals)
+              {
+                <tr>
+                  <td>@w.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                  <td class="amount">@w.Amount.ToString("N0")đ</td>
+                  <td>@w.BankInfo</td>
+                  <td>@Html.Raw(XeGhepApp.Pages.RutTienModel.GetWithdrawStatusHtml(w.Status))</td>
+                </tr>
+              }
+              @if (!Model.RecentWithdrawals.Any())
+              {
+                <tr class="empty-row"><td colspan="4">Chưa có yêu cầu rút tiền nào.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </main>
 </div>
 
-<!-- MODAL: XÁC NHẬN MẬT KHẨU ĐĂNG NHẬP -->
-<div class="modal-overlay hidden" id="modal-confirm-password">
-  <div class="modal" style="max-width:380px">
-    <div class="modal-head"><h3 style="font-size:18px">Xác nhận mật khẩu</h3><button type="button" onclick="closeModal('modal-confirm-password')">✕</button></div>
-    <p class="sub">Vui lòng nhập mật khẩu đăng nhập tài khoản tài xế để xác nhận yêu cầu rút <b id="confirm-amount-display" class="mono"></b>.</p>
-    <div class="field">
-      <label>Mật khẩu đăng nhập</label>
-      <input type="password" id="confirm-password-input" placeholder="Nhập mật khẩu tài khoản" class="input-plain">
-    </div>
-    <div id="confirm-password-error" style="display:none;padding:8px;border-radius:8px;background:var(--coral-dim,#fef2f2);color:var(--coral,#b91c1c);font-size:12.5px;margin-top:8px"></div>
-    <button type="button" class="btn btn-primary btn-block" style="margin-top:16px;padding:12px;width:100%" onclick="confirmWithdrawSubmit()">Xác nhận &amp; Gửi yêu cầu</button>
-  </div>
-</div>
-
 <script src="/assets/common.js"></script>
 <script>
-  const availableBalance = @Model.AvailableToWithdrawDisplay;
-
-  function setAmount(value) {
-      document.getElementById('withdraw-amount').value = value;
-  }
-
-  function toggleNewBankFields() {
-      const isNew = document.getElementById('bank_choice').value === 'new';
-      document.getElementById('new-bank-fields').style.display = isNew ? 'block' : 'none';
-  }
-  toggleNewBankFields();
-
-  function validateWithdrawForm() {
-      const amount = Number(document.getElementById('withdraw-amount').value || 0);
-      if (amount <= 0) { alert('Vui lòng nhập số tiền hợp lệ.'); return false; }
-      if (amount > availableBalance) { alert('Số tiền vượt quá số dư khả dụng.'); return false; }
-
-      if (document.getElementById('bank_choice').value === 'new') {
-          const name = document.querySelector('[name="new_bank_name"]').value.trim();
-          const number = document.querySelector('[name="new_bank_number"]').value.trim();
-          const holder = document.querySelector('[name="new_bank_holder"]').value.trim();
-          if (!name || !number || !holder) {
-              alert('Vui lòng nhập đầy đủ thông tin tài khoản ngân hàng mới.');
-              return false;
-          }
-      }
-      return true;
-  }
-
-  function openPasswordConfirm() {
-      if (!validateWithdrawForm()) return;
-      const amount = Number(document.getElementById('withdraw-amount').value || 0);
-      document.getElementById('confirm-amount-display').textContent = amount.toLocaleString('vi-VN') + 'đ';
-      document.getElementById('confirm-password-input').value = '';
-      document.getElementById('confirm-password-error').style.display = 'none';
-      
-      // Bật modal
-      document.getElementById('modal-confirm-password').classList.remove('hidden');
-      setTimeout(() => document.getElementById('confirm-password-input').focus(), 100);
-  }
-
-  function closeModal(id) {
-      document.getElementById(id).classList.add('hidden');
-  }
-
-  function confirmWithdrawSubmit() {
-      const pw = document.getElementById('confirm-password-input').value;
-      if (!pw) {
-          document.getElementById('confirm-password-error').textContent = 'Vui lòng nhập mật khẩu.';
-          document.getElementById('confirm-password-error').style.display = 'block';
-          return;
-      }
-      document.getElementById('login_password_hidden').value = pw;
-      document.getElementById('withdraw-form').submit();
-  }
-
-  @if (Model.PasswordError) {
-  <text>
-  // Server báo sai mật khẩu -> tự mở lại popup để nhập lại
   document.addEventListener('DOMContentLoaded', function () {
-      const amount = Number(document.getElementById('withdraw-amount').value || 0);
-      document.getElementById('confirm-amount-display').textContent = amount.toLocaleString('vi-VN') + 'đ';
-      document.getElementById('confirm-password-error').textContent = "@Html.Raw(Model.ErrorMessage)";
-      document.getElementById('confirm-password-error').style.display = 'block';
-      document.getElementById('modal-confirm-password').classList.remove('hidden');
+    try {
+      var sidebarProfile = document.getElementById('sidebar-profile');
+      var profileDropdown = document.getElementById('profile-dropdown');
+      if (sidebarProfile && profileDropdown) {
+        sidebarProfile.addEventListener('click', function (e) {
+          profileDropdown.classList.toggle('hidden');
+          e.stopPropagation();
+        });
+        document.addEventListener('click', function (e) {
+          if (!sidebarProfile.contains(e.target)) profileDropdown.classList.add('hidden');
+        });
+      }
+    } catch (err) {
+      console.error('Lỗi khởi tạo menu sidebar:', err);
+    }
   });
-  </text>
+
+  var maxAvailable = @Model.AvailableToWithdrawDisplay.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+  function setAmount(v) {
+    document.getElementById('amount').value = v;
+  }
+  function setAmountMax() {
+    document.getElementById('amount').value = Math.floor(maxAvailable);
+  }
+  function toggleNewBank(show) {
+    document.getElementById('new-bank-fields').classList.toggle('show', show);
   }
 </script>
 </body>

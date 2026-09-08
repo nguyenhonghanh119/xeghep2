@@ -6,8 +6,12 @@ namespace XeGhepApp.Pages;
 
 public class BookingRequestVm
 {
-    public long BookingId { get; set; }
+    public string BookingId { get; set; } = "";
     public int Seats { get; set; }
+    public decimal TotalAmount { get; set; } // Thêm tổng tiền
+    public string PaymentMethod { get; set; } = ""; // Thêm phương thức thanh toán
+    public string PickupAddress { get; set; } = "";
+    public string DropoffAddress { get; set; } = "";
     public string FullName { get; set; } = "";
     public string? Avatar { get; set; }
 }
@@ -24,6 +28,7 @@ public class TripWithRequestsVm
     public List<BookingRequestVm> Requests { get; set; } = new();
 }
 
+[Microsoft.AspNetCore.Authorization.Authorize(Policy = "DriverOnly")]
 public class YeuCauDatChoModel : PageModel
 {
     public string FullName { get; private set; } = "";
@@ -35,7 +40,7 @@ public class YeuCauDatChoModel : PageModel
 
     public async Task OnGetAsync()
     {
-        var driverId = Constants.DriverId;
+        var driverId = CurrentUser.DriverId(User);
         await using var conn = await Db.OpenAsync();
 
         // 1. Thông tin tài xế cho sidebar
@@ -88,8 +93,10 @@ public class YeuCauDatChoModel : PageModel
             var tripIds = TripsWithRequests.Select(t => t.TripId).ToList();
             var placeholders = string.Join(",", tripIds.Select((_, i) => $"@t{i}"));
 
+            // Cập nhật câu SQL lấy thêm total_amount và payment_method
             await using var cmd = new MySqlCommand($@"
-                SELECT b.booking_id, b.trip_id, b.seats, u.full_name, u.avatar
+                SELECT b.booking_id, b.trip_id, b.seats, b.total_amount, b.payment_method,
+                       b.pickup_address, b.dropoff_address, u.full_name, u.avatar
                 FROM bookings b
                 JOIN users u ON b.passenger_id = u.user_id
                 WHERE b.trip_id IN ({placeholders}) AND b.status = 'pending_approval'
@@ -105,8 +112,12 @@ public class YeuCauDatChoModel : PageModel
                 {
                     trip.Requests.Add(new BookingRequestVm
                     {
-                        BookingId = reader.GetInt64("booking_id"),
+                        BookingId = reader.GetString("booking_id"),
                         Seats = reader.GetInt32("seats"),
+                        TotalAmount = reader.GetDecimal("total_amount"), // Đọc tổng tiền
+                        PaymentMethod = reader.GetString("payment_method"), // Đọc phương thức
+                        PickupAddress = reader.GetString("pickup_address"),
+                        DropoffAddress = reader.GetString("dropoff_address"),
                         FullName = reader.GetString("full_name"),
                         Avatar = reader.IsDBNull(reader.GetOrdinal("avatar")) ? null : reader.GetString("avatar"),
                     });

@@ -18,6 +18,7 @@ public class MyTripVm
     public int SeatsBooked { get; set; }
 }
 
+[Microsoft.AspNetCore.Authorization.Authorize(Policy = "DriverOnly")]
 public class ChuyenCuaToiModel : PageModel
 {
     public string FullName { get; private set; } = "";
@@ -32,7 +33,7 @@ public class ChuyenCuaToiModel : PageModel
 
     public async Task OnGetAsync()
     {
-        var driverId = Constants.DriverId;
+        var driverId = CurrentUser.DriverId(User);
         await using var conn = await Db.OpenAsync();
 
         // 1. Thông tin tài xế cho sidebar
@@ -71,7 +72,7 @@ public class ChuyenCuaToiModel : PageModel
         UpcomingTrips = await LoadTrips(conn, driverId, "upcoming", null);
         foreach (var t in UpcomingTrips)
         {
-            t.Pax = await GetPaxList(conn, t.TripId, new[] { "approved" });
+            t.Pax = await GetPaxList(conn, driverId, t.TripId, new[] { "confirmed", "paid", "approved" });
             t.SeatsBooked = await BookedSeats(conn, t.TripId);
         }
 
@@ -79,13 +80,14 @@ public class ChuyenCuaToiModel : PageModel
         RunningTrips = await LoadTrips(conn, driverId, "running", null);
         foreach (var t in RunningTrips)
         {
-            t.Pax = await GetPaxList(conn, t.TripId, new[] { "running" });
+            t.Pax = await GetPaxList(conn, driverId, t.TripId, new[] { "running" });
         }
 
         // 6. Hoàn thành (20 gần nhất)
         DoneTrips = await LoadTrips(conn, driverId, "done", 20);
         foreach (var t in DoneTrips)
         {
+            t.Pax = await GetPaxList(conn, driverId, t.TripId, new[] { "done" });
             var seatsDone = await BookedSeats(conn, t.TripId);
             var revenue = seatsDone * t.PricePerSeat;
             DoneIncome[t.TripId] = Math.Round(revenue * (1 - commissionRate / 100m), 2, MidpointRounding.AwayFromZero);
@@ -120,25 +122,34 @@ public class ChuyenCuaToiModel : PageModel
         return list;
     }
 
-    private static async Task<List<PaxVm>> GetPaxList(MySqlConnection conn, string tripId, string[] statuses)
+    private static async Task<List<PaxVm>> GetPaxList(MySqlConnection conn, int driverId, string tripId, string[] statuses)
     {
         var placeholders = string.Join(",", statuses.Select((_, i) => $"@s{i}"));
-        var sql = $@"SELECT u.full_name, u.avatar, b.seats
+        var sql = $@"SELECT b.booking_id, u.full_name, u.avatar, b.seats, b.payment_method, b.payment_status,
+                     b.pickup_address, b.dropoff_address,
+                     EXISTS(SELECT 1 FROM reviews r WHERE r.booking_id=b.booking_id AND r.reviewer_id=@driver_id) reviewed_by_driver
                      FROM bookings b JOIN users u ON b.passenger_id = u.user_id
                      WHERE b.trip_id = @trip_id AND b.status IN ({placeholders})";
 
         var list = new List<PaxVm>();
         await using var cmd = new MySqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("@trip_id", tripId);
+        cmd.Parameters.AddWithValue("@driver_id", driverId);
         for (int i = 0; i < statuses.Length; i++) cmd.Parameters.AddWithValue($"@s{i}", statuses[i]);
         await using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
             list.Add(new PaxVm
             {
+                BookingId = reader.GetString("booking_id"),
                 FullName = reader.GetString("full_name"),
                 Avatar = reader.IsDBNull(reader.GetOrdinal("avatar")) ? null : reader.GetString("avatar"),
-                Seats = reader.GetInt32("seats")
+                Seats = reader.GetInt32("seats"),
+                PaymentMethod = reader.GetString("payment_method"),
+                PaymentStatus = reader.GetString("payment_status"),
+                PickupAddress = reader.GetString("pickup_address"),
+                DropoffAddress = reader.GetString("dropoff_address"),
+                ReviewedByDriver = reader.GetBoolean("reviewed_by_driver")
             });
         }
         return list;
@@ -147,7 +158,7 @@ public class ChuyenCuaToiModel : PageModel
     private static async Task<int> BookedSeats(MySqlConnection conn, string tripId)
     {
         await using var cmd = new MySqlCommand(@"SELECT COALESCE(SUM(seats),0) FROM bookings
-                       WHERE trip_id = @trip_id AND status IN ('approved','running','done')", conn);
+                       WHERE trip_id = @trip_id AND status IN ('approved','confirmed','paid','running','done')", conn);
         cmd.Parameters.AddWithValue("@trip_id", tripId);
         return Convert.ToInt32(await cmd.ExecuteScalarAsync());
     }

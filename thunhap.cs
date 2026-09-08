@@ -23,6 +23,7 @@ public class WithdrawalRowVm
     public string Status { get; set; } = "";
 }
 
+[Microsoft.AspNetCore.Authorization.Authorize(Policy = "DriverOnly")]
 public class ThuNhapModel : PageModel
 {
     public string FullName { get; private set; } = "";
@@ -40,12 +41,14 @@ public class ThuNhapModel : PageModel
 
     public async Task OnGetAsync()
     {
-        var driverId = Constants.DriverId;
+        var driverId = CurrentUser.DriverId(User);
         await using var conn = await Db.OpenAsync();
 
         // 1. Thông tin tài xế và số dư ví
-        await using (var cmd = new MySqlCommand(@"SELECT u.full_name, u.avatar, dp.rating, dp.wallet_balance, dp.total_trips
+        await using (var cmd = new MySqlCommand(@"SELECT u.full_name, u.avatar, dp.rating,
+                              COALESCE(w.available_balance, 0) wallet_balance, dp.total_trips
                        FROM users u JOIN driver_profiles dp ON u.user_id = dp.driver_id
+                       LEFT JOIN wallets w ON w.user_id = u.user_id
                        WHERE u.user_id = @driver_id", conn))
         {
             cmd.Parameters.AddWithValue("@driver_id", driverId);
