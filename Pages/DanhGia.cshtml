@@ -1,0 +1,68 @@
+@page "/DanhGia"
+@model XeGhepAdmin.Pages.DanhGiaModel
+
+<div class="view">
+  <div class="topbar"><div><h1>Đánh giá &amp; khiếu nại</h1><p>Theo dõi đánh giá của khách và xử lý khiếu nại phát sinh.</p></div></div>
+
+  <div class="tabs">
+    <button class="active" data-subtab="reviews" onclick="switchSubTab('reviews')">Đánh giá</button>
+    <button data-subtab="complaints" onclick="switchSubTab('complaints')">Khiếu nại
+      @{ var chuaXuLy = Model.Complaints.Count(c => !c.DaXuLy); }
+      @if (chuaXuLy > 0)
+      {
+        <span class="badge-count" style="background:var(--coral);color:#fff;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:20px;margin-left:4px">@chuaXuLy</span>
+      }
+    </button>
+  </div>
+
+  <div id="subtab-reviews" class="subtab-panel">
+    <div class="card">
+      <table>
+        <thead><tr><th>Khách</th><th>Tài xế</th><th>Chuyến</th><th>Điểm</th><th>Nhận xét</th><th>Ngày</th></tr></thead>
+        <tbody>
+          @foreach (var r in Model.Reviews)
+          {
+            <tr><td>@r.Khach</td><td>@r.TaiXe</td><td class="mono">@r.MaChuyen</td><td>@(new string('⭐', r.SoSao))</td><td>@r.NhanXet</td><td class="mono">@r.Ngay.ToString("dd/MM")</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="subtab-complaints" class="subtab-panel hidden">
+    @foreach (var c in Model.Complaints)
+    {
+      <div class="admin-row" data-complaint-id="@c.MaKhieuNai">
+        <div class="av">@(c.Khach.Trim().Split(' ').Last()[..1].ToUpper())</div>
+        <div class="meta"><b>@c.Khach khiếu nại tài xế @c.TaiXe</b><div class="sub">Chuyến @c.MaChuyen · Nội dung: "@c.NoiDung"</div></div>
+        <div class="actions">
+          @if (c.DaXuLy)
+          {
+            <span class="doc-status approved">Đã xử lý</span>
+          }
+          else
+          {
+            <button class="btn btn-outline btn-sm">Xem chi tiết</button>
+            <button class="btn btn-green btn-sm" onclick="resolveComplaint(this)">Đánh dấu đã xử lý</button>
+          }
+        </div>
+      </div>
+    }
+  </div>
+</div>
+
+@section Scripts {
+<script>
+  function switchSubTab(tab){
+    document.getElementById('subtab-reviews').classList.toggle('hidden', tab !== 'reviews');
+    document.getElementById('subtab-complaints').classList.toggle('hidden', tab !== 'complaints');
+    document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.subtab === tab));
+  }
+  function resolveComplaint(btn){
+    const row = btn.closest('.admin-row');
+    // TODO BACKEND: await fetch(`/api/admin/complaints/${row.dataset.complaintId}/resolve`, {method:'POST'});
+    row.style.opacity = '.4';
+    row.querySelector('.actions').innerHTML = '<span class="doc-status approved">Đã xử lý</span>';
+  }
+</script>
+}

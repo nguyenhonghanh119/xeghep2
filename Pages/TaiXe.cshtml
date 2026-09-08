@@ -1,0 +1,134 @@
+@page "/TaiXe"
+@model XeGhepAdmin.Pages.TaiXeModel
+
+<div class="view" id="view-admin-drivers">
+  <div class="topbar"><div><h1>Tài xế</h1><p>Duyệt hồ sơ đăng ký, phương tiện và quản lý trạng thái hoạt động của tài xế.</p></div></div>
+
+  <div class="filter-bar">
+    <div class="input">🔍<input placeholder="Tìm theo tên, SĐT hoặc biển số…" id="driver-search"></div>
+    <select id="driver-vehicle-filter"><option value="">Tất cả loại xe</option><option>4 chỗ</option><option>7 chỗ</option></select>
+  </div>
+
+  <div class="tabs">
+    <button class="active" data-tab="a-pending" onclick="switchATab('a-pending')">Chờ duyệt
+      @if (Model.ChoDuyet.Count > 0)
+      {
+        <span class="badge-count" style="background:var(--coral);color:#fff;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:20px;margin-left:4px">@Model.ChoDuyet.Count</span>
+      }
+    </button>
+    <button data-tab="a-active" onclick="switchATab('a-active')">Đang hoạt động</button>
+    <button data-tab="a-locked" onclick="switchATab('a-locked')">Bị khoá</button>
+  </div>
+
+  <div id="atab-a-pending">
+    @foreach (var d in Model.ChoDuyet)
+    {
+      <div class="admin-row" data-driver-id="@d.MaTaiXe">
+        <div class="av">@d.AnhDaiDien</div>
+        <div class="meta">
+          <b>@d.HoTen</b>
+          <div class="sub">@d.SoDienThoai · @d.Vehicle.LoaiXe · @d.Vehicle.BienSo · @d.Vehicle.SoCho chỗ</div>
+          <div class="sub">Hồ sơ xe: đăng ký xe, đăng kiểm, bảo hiểm — chờ duyệt cùng hồ sơ tài xế · Nộp @d.NgayNopHoSo?.ToString("dd/MM/yyyy")</div>
+        </div>
+        <div class="stats"><div><b>—</b>Chuyến</div><div><b>—</b>Đánh giá</div></div>
+        <div class="actions">
+          <button class="btn btn-outline btn-sm" onclick="viewDocs(this)">Xem giấy tờ (tài xế + xe)</button>
+          <button class="btn btn-green btn-sm" onclick="approveDriver(this)">Duyệt</button>
+          <button class="btn btn-coral btn-sm" onclick="rejectDriver(this)">Từ chối</button>
+        </div>
+      </div>
+    }
+  </div>
+
+  <div id="atab-a-active" class="hidden">
+    @foreach (var d in Model.DangHoatDong)
+    {
+      <div class="admin-row" data-driver-id="@d.MaTaiXe">
+        <div class="av">@d.AnhDaiDien</div>
+        <div class="meta">
+          <b>@d.HoTen</b>
+          <div class="sub">@d.SoDienThoai · @d.Vehicle.LoaiXe · @d.Vehicle.BienSo · @d.Vehicle.SoCho chỗ</div>
+          <div class="sub">
+            Hạn đăng kiểm: <span class="mono">@(d.Vehicle.HanDangKiem?.ToString("dd/MM/yyyy") ?? "—")</span>
+            @if (d.Vehicle.SapHetHan)
+            {
+              <span class="status-pill pending" style="margin-left:6px">Sắp hết hạn đăng kiểm</span>
+            }
+          </div>
+        </div>
+        <div class="stats"><div><b>@d.SoChuyen</b>Chuyến</div><div><b>@(d.DanhGia?.ToString("0.0") ?? "—")★</b>Đánh giá</div></div>
+        <div class="actions">
+          <button class="btn btn-outline btn-sm" onclick="viewDocs(this)">Xem hồ sơ (tài xế + xe)</button>
+          <button class="btn btn-coral btn-sm" onclick="suspendDriver(this)">Khoá tài khoản</button>
+        </div>
+      </div>
+    }
+  </div>
+
+  <div id="atab-a-locked" class="hidden">
+    @foreach (var d in Model.BiKhoa)
+    {
+      <div class="admin-row" data-driver-id="@d.MaTaiXe" style="opacity:.7">
+        <div class="av">@d.AnhDaiDien</div>
+        <div class="meta">
+          <b>@d.HoTen</b>
+          <div class="sub">Bị khoá @d.NgayBiKhoa?.ToString("dd/MM/yyyy") · Lý do: @d.LyDoKhoa</div>
+        </div>
+        <div class="stats"><div><b>@d.SoChuyen</b>Chuyến</div><div><b>@(d.DanhGia?.ToString("0.0") ?? "—")★</b>Đánh giá</div></div>
+        <div class="actions">
+          <button class="btn btn-green btn-sm" onclick="reactivateDriver(this)">Mở khoá</button>
+        </div>
+      </div>
+    }
+  </div>
+</div>
+
+@section Scripts {
+<script>
+  function switchATab(tab){
+    ['a-pending','a-active','a-locked'].forEach(t => document.getElementById('atab-'+t).classList.toggle('hidden', t !== tab));
+    document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  }
+
+  function viewDocs(btn){
+    const id = btn.closest('.admin-row').dataset.driverId;
+    // TODO BACKEND: mở modal/trang xem CCCD, GPLX, đăng ký xe, đăng kiểm, bảo hiểm (đã gộp) -> GET /api/admin/drivers/:id/documents
+    alert('Xem giấy tờ tài xế + phương tiện của ' + id + ' (demo — cần nối API).');
+  }
+
+  function approveDriver(btn){
+    const row = btn.closest('.admin-row');
+    const id = row.dataset.driverId;
+    // TODO BACKEND: await fetch(`/api/admin/drivers/${id}/approve`, {method:'POST'}); // duyệt luôn cả phương tiện đi kèm
+    row.style.opacity = '.4';
+    row.querySelector('.actions').innerHTML = '<span class="doc-status approved">Đã duyệt</span>';
+    updateSidebarBadge('/TaiXe', -1);
+  }
+
+  function rejectDriver(btn){
+    const row = btn.closest('.admin-row');
+    const id = row.dataset.driverId;
+    if(!confirm('Từ chối hồ sơ tài xế này?')) return;
+    // TODO BACKEND: await fetch(`/api/admin/drivers/${id}/reject`, {method:'POST'});
+    row.style.opacity = '.4';
+    row.querySelector('.actions').innerHTML = '<span class="doc-status rejected">Đã từ chối</span>';
+    updateSidebarBadge('/TaiXe', -1);
+  }
+
+  function suspendDriver(btn){
+    const row = btn.closest('.admin-row');
+    const id = row.dataset.driverId;
+    const reason = prompt('Nhập lý do khoá tài khoản tài xế này:');
+    if (reason === null) return;
+    // TODO BACKEND: await fetch(`/api/admin/drivers/${id}/suspend`, {method:'POST', body: JSON.stringify({reason})});
+    alert('Đã khoá tài khoản tài xế ' + id + ' — lý do: ' + reason + ' (demo — cần nối API).');
+  }
+
+  function reactivateDriver(btn){
+    const row = btn.closest('.admin-row');
+    const id = row.dataset.driverId;
+    // TODO BACKEND: await fetch(`/api/admin/drivers/${id}/reactivate`, {method:'POST'});
+    alert('Đã mở khoá tài khoản tài xế ' + id + ' (demo — cần nối API).');
+  }
+</script>
+}

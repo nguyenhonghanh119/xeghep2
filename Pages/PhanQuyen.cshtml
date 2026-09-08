@@ -1,0 +1,71 @@
+@page "/PhanQuyen"
+@model XeGhepAdmin.Pages.PhanQuyenModel
+
+<div class="view">
+  <div class="topbar">
+    <div><h1>Phân quyền</h1><p>Quản lý tài khoản quản trị viên và vai trò truy cập hệ thống.</p></div>
+    <button class="btn btn-primary" onclick="openAddStaffForm()">+ Thêm quản trị viên</button>
+  </div>
+
+  <div class="card" id="add-staff-form" style="display:none;margin-bottom:16px">
+    <div class="list-title">Thêm quản trị viên mới</div>
+    <div class="form-grid">
+      <div class="field"><label>Họ tên</label><div class="input"><input id="new-staff-name" placeholder="Nguyễn Văn A"></div></div>
+      <div class="field"><label>Email</label><div class="input"><input id="new-staff-email" placeholder="ten@xeghep.vn"></div></div>
+      <div class="field"><label>Vai trò</label><div class="input">
+        <select id="new-staff-role">
+          <option value="ToanQuyen">Quản trị viên (Toàn quyền)</option>
+          <option value="NhanVienHoTro">Nhân viên hỗ trợ</option>
+          <option value="QuanLyVanHanh">Quản lý vận hành</option>
+        </select>
+      </div></div>
+    </div>
+    <button class="btn btn-primary" style="margin-top:16px" onclick="saveNewStaff()">Lưu tài khoản</button>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead><tr><th>Họ tên</th><th>Email</th><th>Vai trò</th><th>Trạng thái</th><th>Lý do khoá</th><th></th></tr></thead>
+      <tbody>
+        @foreach (var s in Model.StaffAccounts)
+        {
+          var locked = s.TrangThai == TrangThai.BiKhoa;
+          <tr>
+            <td style="font-weight:600">@s.HoTen</td>
+            <td class="mono">@s.Email</td>
+            <td>@XeGhepAdmin.Pages.PhanQuyenModel.TenVaiTro(s.VaiTro)</td>
+            <td><span class="status-pill @(locked ? "locked" : "approved")">@(locked ? "Đã khoá" : "Đang hoạt động")</span></td>
+            <td>
+              @if (locked)
+              {
+                <span style="font-size:12.5px;color:var(--ink-soft)">@s.LyDoKhoa <span class="mono" style="color:var(--ink-faint)">(@s.NgayBiKhoa?.ToString("dd/MM/yyyy"))</span></span>
+              }
+              else
+              {
+                <span style="color:var(--ink-faint)">—</span>
+              }
+            </td>
+            <td><button class="btn btn-outline btn-sm">Sửa</button></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+@section Scripts {
+<script>
+  function openAddStaffForm(){
+    const el = document.getElementById('add-staff-form');
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  }
+  function saveNewStaff(){
+    const name = document.getElementById('new-staff-name').value.trim();
+    const email = document.getElementById('new-staff-email').value.trim();
+    const role = document.getElementById('new-staff-role').value;
+    if (!name || !email){ alert('Vui lòng nhập đủ họ tên và email.'); return; }
+    // TODO BACKEND: await fetch('/api/admin/staff', {method:'POST', body: JSON.stringify({name, email, role})});
+    alert('Đã thêm quản trị viên ' + name + ' (demo — cần nối API).');
+  }
+</script>
+}

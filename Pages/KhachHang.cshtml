@@ -1,0 +1,72 @@
+@page "/KhachHang"
+@model XeGhepAdmin.Pages.KhachHangModel
+
+<div class="view" id="view-admin-users">
+  <div class="topbar"><div><h1>Khách hàng</h1><p>Danh sách hành khách đã đăng ký trên hệ thống.</p></div></div>
+
+  <div class="filter-bar">
+    <div class="input">🔍<input placeholder="Tìm theo tên, SĐT hoặc email…" id="user-search"></div>
+    <select id="user-status-filter"><option value="">Tất cả trạng thái</option><option>Đang hoạt động</option><option>Bị khoá</option></select>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead><tr><th>Khách hàng</th><th>SĐT</th><th>Ngày tham gia</th><th>Số chuyến</th><th>Trạng thái</th><th></th></tr></thead>
+      <tbody id="users-table">
+        @foreach (var u in Model.Customers)
+        {
+          var locked = u.TrangThai == TrangThai.BiKhoa;
+          <tr data-user-id="@u.MaKhach">
+            <td style="font-weight:600">@u.HoTen
+              @if (locked && u.LyDoKhoa != null)
+              {
+                <div class="sub" style="font-weight:400;color:var(--ink-faint);font-size:11.5px;margin-top:2px">Lý do khoá: @u.LyDoKhoa</div>
+              }
+            </td>
+            <td class="mono">@u.SoDienThoai</td>
+            <td class="mono">@u.NgayThamGia.ToString("dd/MM/yyyy")</td>
+            <td>@u.SoChuyen</td>
+            <td><span class="status-pill @(locked ? "locked" : "approved")">@(locked ? "Bị khoá" : "Đang hoạt động")</span></td>
+            <td>
+              @if (locked)
+              {
+                <button class="btn btn-green btn-sm" onclick="toggleUserLock(this,'unlock')">Mở khoá</button>
+              }
+              else
+              {
+                <button class="btn btn-coral btn-sm" onclick="toggleUserLock(this,'lock')">Khoá</button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+@section Scripts {
+<script>
+  function toggleUserLock(btn, action){
+    const row = btn.closest('tr');
+    const id = row.dataset.userId;
+    const statusCell = row.querySelector('.status-pill');
+    if (action === 'lock'){
+      const reason = prompt('Nhập lý do khoá tài khoản này:');
+      if (reason === null) return;
+      // TODO BACKEND: await fetch(`/api/admin/users/${id}/suspend`, {method:'POST', body: JSON.stringify({reason})});
+      statusCell.textContent = 'Bị khoá';
+      statusCell.className = 'status-pill locked';
+      btn.textContent = 'Mở khoá';
+      btn.className = 'btn btn-green btn-sm';
+      btn.setAttribute('onclick', "toggleUserLock(this,'unlock')");
+    } else {
+      // TODO BACKEND: await fetch(`/api/admin/users/${id}/reactivate`, {method:'POST'});
+      statusCell.textContent = 'Đang hoạt động';
+      statusCell.className = 'status-pill approved';
+      btn.textContent = 'Khoá';
+      btn.className = 'btn btn-coral btn-sm';
+      btn.setAttribute('onclick', "toggleUserLock(this,'lock')");
+    }
+  }
+</script>
+}

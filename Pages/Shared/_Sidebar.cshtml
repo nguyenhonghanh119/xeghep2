@@ -1,0 +1,65 @@
+@inject XeGhepAdmin.Data.SampleDataStore Data
+@{
+    var active = ViewData["ActivePage"] as string ?? "";
+    var userChildren = new[] { "khach-hang", "tai-xe", "tai-khoan" };
+    var isUserGroupOpen = userChildren.Contains(active);
+    var soHoSoChoDuyet = Data.SoHoSoTaiXeChoDuyet;
+    var soKhieuNaiChuaXuLy = Data.Complaints.Count(c => !c.DaXuLy);
+}
+<div class="sidebar">
+  <div class="brand">
+    <div class="dot-route">X</div>
+    <div>XeGhép<small>Quản trị</small></div>
+    <span class="role-badge">Admin</span>
+  </div>
+
+  <nav class="side-nav">
+    <a href="/" class="@(active == "dashboard" ? "active" : "")">
+      <span class="ic">🏠</span> Dashboard
+    </a>
+
+    <div class="user-menu @(isUserGroupOpen ? "open" : "")" id="userMenu">
+      <button type="button" class="user-menu-button @(isUserGroupOpen ? "active-parent" : "")" onclick="toggleUserMenu()">
+        <span class="user-menu-left"><span class="ic">👤</span> Quản lý người dùng</span>
+        <span class="user-menu-arrow">▾</span>
+      </button>
+      <div class="user-submenu">
+        <a href="/KhachHang" class="@(active == "khach-hang" ? "active" : "")">Khách hàng</a>
+        <a href="/TaiXe" class="@(active == "tai-xe" ? "active" : "")">
+          Tài xế
+          @if (soHoSoChoDuyet > 0)
+          {
+            <span class="badge-count">@soHoSoChoDuyet</span>
+          }
+        </a>
+        <a href="/TaiKhoan" class="@(active == "tai-khoan" ? "active" : "")">Tài khoản mới</a>
+      </div>
+    </div>
+
+    <a href="/ChuyenXe" class="@(active == "chuyen-xe" ? "active" : "")"><span class="ic">🚐</span> Chuyến xe</a>
+    <a href="/DatXe" class="@(active == "dat-xe" ? "active" : "")"><span class="ic">🎫</span> Đặt xe</a>
+    <a href="/DangChuyen" class="@(active == "dang-chuyen" ? "active" : "")"><span class="ic">📍</span> Đăng chuyến &amp; Giá</a>
+
+    <a href="/DanhGia" class="@(active == "danh-gia" ? "active" : "")">
+      <span class="ic">⭐</span> Đánh giá &amp; khiếu nại
+      @if (soKhieuNaiChuaXuLy > 0)
+      {
+        <span class="badge-count">@soKhieuNaiChuaXuLy</span>
+      }
+    </a>
+
+    <a href="/ThanhToan" class="@(active == "thanh-toan" ? "active" : "")"><span class="ic">💳</span> Thanh toán</a>
+    <a href="/ThongBao" class="@(active == "thong-bao" ? "active" : "")"><span class="ic">🔔</span> Thông báo</a>
+    <a href="/PhanQuyen" class="@(active == "phan-quyen" ? "active" : "")"><span class="ic">🔑</span> Phân quyền</a>
+    <a href="/BaoCao" class="@(active == "bao-cao" ? "active" : "")"><span class="ic">📊</span> Báo cáo</a>
+    <a href="/NhatKy" class="@(active == "nhat-ky" ? "active" : "")"><span class="ic">🕒</span> Nhật ký</a>
+  </nav>
+
+  <div class="sidebar-foot">
+    <div class="av">A</div>
+    <div>
+      <b>Admin Quản trị</b>
+      <span class="role-pill">Toàn quyền</span>
+    </div>
+  </div>
+</div>

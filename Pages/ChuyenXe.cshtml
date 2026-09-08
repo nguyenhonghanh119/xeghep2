@@ -1,0 +1,44 @@
+@page "/ChuyenXe"
+@model XeGhepAdmin.Pages.ChuyenXeModel
+
+<div class="view" id="view-admin-trips">
+  <div class="topbar"><div><h1>Quản lý chuyến xe</h1><p>Theo dõi toàn bộ chuyến xe do tài xế đăng trên hệ thống.</p></div></div>
+
+  <div class="filter-bar">
+    <div class="input">🔍<input placeholder="Tìm theo mã chuyến, tài xế hoặc tuyến…" id="trip-search"></div>
+    <select id="trip-status-filter">
+      <option value="">Tất cả trạng thái</option>
+      <option>Sắp khởi hành</option>
+      <option>Đang chạy</option>
+      <option>Hoàn thành</option>
+      <option>Đã huỷ</option>
+    </select>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead><tr><th>Mã chuyến</th><th>Tuyến</th><th>Tài xế</th><th>Khách</th><th>Ngày giờ</th><th>Ghế</th><th>Trạng thái</th><th></th></tr></thead>
+      <tbody id="trips-table">
+        @foreach (var t in Model.Trips)
+        {
+          <tr data-trip-id="@t.MaChuyen">
+            <td class="mono">@t.MaChuyen</td><td>@t.DiemDi → @t.DiemDen</td><td>@t.TaiXe</td><td>@t.SoKhach khách</td>
+            <td class="mono">@t.ThoiGian.ToString("dd/MM · HH:mm")</td><td>@t.GheDaDat/@t.TongGhe</td>
+            <td><span class="status-pill @XeGhepAdmin.Pages.ChuyenXeModel.PillClass(t.TrangThai)">@XeGhepAdmin.Pages.ChuyenXeModel.PillText(t.TrangThai)</span></td>
+            <td><button class="btn btn-outline btn-sm" onclick="viewTrip(this)">Chi tiết</button></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+@section Scripts {
+<script>
+  function viewTrip(btn){
+    const id = btn.closest('tr').dataset.tripId;
+    // TODO BACKEND: điều hướng đến trang chi tiết chuyến, ví dụ location.href = `/ChuyenXe/${id}`;
+    alert('Xem chi tiết chuyến ' + id + ' (demo — cần nối API).');
+  }
+</script>
+}

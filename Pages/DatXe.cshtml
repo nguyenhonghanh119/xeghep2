@@ -1,0 +1,28 @@
+@page "/DatXe"
+@model XeGhepAdmin.Pages.DatXeModel
+
+<div class="view">
+  <div class="topbar"><div><h1>Quản lý đặt xe</h1><p>Danh sách yêu cầu đặt chỗ của khách trên các chuyến xe.</p></div></div>
+
+  <div class="filter-bar">
+    <div class="input">🔍<input placeholder="Tìm theo mã đặt chỗ, khách hoặc chuyến…"></div>
+    <select><option value="">Tất cả trạng thái</option><option>Chờ xác nhận</option><option>Đã xác nhận</option><option>Đã huỷ</option></select>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead><tr><th>Mã đặt chỗ</th><th>Chuyến</th><th>Khách</th><th>Ghế đặt</th><th>Thanh toán</th><th>Trạng thái</th><th></th></tr></thead>
+      <tbody>
+        @foreach (var b in Model.Bookings)
+        {
+          <tr>
+            <td class="mono">@b.MaDatCho</td><td class="mono">@b.MaChuyen</td><td>@b.Khach</td><td>@b.GheDat</td>
+            <td><span class="method-tag @(b.PhuongThuc == PhuongThucThanhToan.Online ? "online" : "cash")">@(b.PhuongThuc == PhuongThucThanhToan.Online ? "Online" : "Tiền mặt")</span></td>
+            <td><span class="status-pill @XeGhepAdmin.Pages.DatXeModel.PillClass(b.TrangThai)">@XeGhepAdmin.Pages.DatXeModel.PillText(b.TrangThai)</span></td>
+            <td><button class="btn btn-outline btn-sm">Chi tiết</button></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

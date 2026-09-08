@@ -1,0 +1,29 @@
+@page "/ThongBao"
+@model XeGhepAdmin.Pages.ThongBaoModel
+
+<div class="view">
+  <div class="topbar"><div><h1>Thông báo</h1><p>Soạn và gửi thông báo đẩy đến khách hàng và tài xế.</p></div></div>
+
+  <div class="card">
+    <div class="list-title">Soạn thông báo mới</div>
+    <div class="form-grid">
+      <div class="field full"><label>Tiêu đề</label><div class="input"><input placeholder="Ví dụ: Bảo trì hệ thống 02:00 - 04:00 ngày 25/08"></div></div>
+      <div class="field full"><label>Nội dung</label><textarea placeholder="Nội dung thông báo…"></textarea></div>
+      <div class="field"><label>Gửi đến</label><div class="input"><select><option>Tất cả</option><option>Chỉ khách hàng</option><option>Chỉ tài xế</option></select></div></div>
+    </div>
+    <button class="btn btn-primary" style="margin-top:16px" onclick="alert('Đã gửi thông báo (demo — cần nối API).')">Gửi thông báo</button>
+  </div>
+
+  <div class="card">
+    <div class="list-title">Lịch sử thông báo đã gửi</div>
+    <table>
+      <thead><tr><th>Tiêu đề</th><th>Đối tượng</th><th>Ngày gửi</th></tr></thead>
+      <tbody>
+        @foreach (var t in Model.LichSu)
+        {
+          <tr><td style="font-weight:600">@t.TieuDe</td><td>@t.DoiTuong</td><td class="mono">@t.NgayGui.ToString("dd/MM/yyyy")</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
