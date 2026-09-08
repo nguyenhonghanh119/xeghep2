@@ -1,0 +1,117 @@
+@page
+@model XeGhepApp.Pages.YeuCauDatChoModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XeGhép — Tài xế — Yêu cầu đặt chỗ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand"><span class="dot-route">X</span><div>XeGhép<small>TÀI XẾ</small></div></div>
+    <nav class="side-nav">
+      <a href="/Index"><span class="ic">🏠</span> Tổng quan</a>
+      <a href="/YeuCauDatCho" class="active">
+          <span class="ic">📥</span> Yêu cầu đặt chỗ 
+          @if(Model.TotalPendingCount > 0){
+            <span class="badge-count" id="pending-count">@Model.TotalPendingCount</span>
+          }
+      </a>
+      <a href="/ChuyenCuaToi"><span class="ic">🧭</span> Chuyến của tôi</a>
+      <a href="/ThuNhap"><span class="ic">₫</span> Thu nhập</a>
+      <a href="/HoSo"><span class="ic">👤</span> Hồ sơ &amp; giấy tờ</a>
+    </nav>
+    <div class="sidebar-foot">
+        <div class="av">@(Model.Avatar ?? "U")</div>
+        <div><b>@Model.FullName</b><span>★ @Model.Rating.ToString("0.0") · Đã duyệt</span></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="view" id="view-requests">
+      <div class="topbar"><div><h1>Yêu cầu đặt chỗ</h1><p>Duyệt yêu cầu từ hành khách cho từng chuyến đã đăng.</p></div></div>
+
+      <div id="requests-list">
+        
+        @foreach(var trip in Model.TripsWithRequests) {
+        <div class="trip-group-head" data-trip-id="@trip.TripId">
+          <div class="route-strip" style="max-width:420px">
+              <div class="pt">
+                  <div class="city" style="font-size:14px">@trip.RouteFrom</div>
+                  <div class="sub">@XeGhepApp.Pages.YeuCauDatChoModel.FormatVietnameseDate(trip.DepartureTime) · @trip.DepartureTime.ToString("HH:mm")</div>
+              </div>
+              <div class="route-line"><div class="node start"></div><div class="node end"></div></div>
+              <div class="pt end">
+                  <div class="city" style="font-size:14px">@trip.RouteTo</div>
+                  <div class="sub">@trip.AvailableSeats ghế trống</div>
+              </div>
+          </div>
+          <span style="font-size:12.5px;color:var(--ink-faint)">@trip.PendingReqCount yêu cầu chờ duyệt</span>
+        </div>
+
+        @foreach(var req in trip.Requests) {
+        <div class="req-card" data-request-id="@req.BookingId">
+          <div class="av">@(req.Avatar ?? XeGhepApp.Pages.YeuCauDatChoModel.FirstName(req.FullName).Substring(0, 1))</div>
+          <div class="meta">
+              <b>@req.FullName</b> <span class="stars">★ 5.0</span>
+              <div class="tripline">Xin @req.Seats ghế · Đón tại @trip.PickupLocation</div>
+          </div>
+          <div class="actions">
+              <button class="btn btn-green btn-sm" onclick="acceptReq(this)">Chấp nhận</button>
+              <button class="btn btn-coral btn-sm" onclick="rejectReq(this)">Từ chối</button>
+          </div>
+        </div>
+        }
+        
+        }
+
+        @if(!Model.TripsWithRequests.Any()) {
+            <p style="text-align:center; color:var(--ink-soft); padding: 40px 0;">
+                Hiện tại không có yêu cầu đặt chỗ nào đang chờ duyệt.
+            </p>
+        }
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/common.js"></script>
+<script>
+  function acceptReq(btn){
+    const card = btn.closest('.req-card');
+    const requestId = card.dataset.requestId;
+    // AJAX gọi backend xử lý ở đây
+    card.style.opacity = '.4';
+    card.querySelector('.actions').innerHTML = '<span class="doc-status approved">Đã chấp nhận</span>';
+    updatePendingCount(-1);
+  }
+
+  function rejectReq(btn){
+    const card = btn.closest('.req-card');
+    const requestId = card.dataset.requestId;
+    // AJAX gọi backend xử lý ở đây
+    card.style.opacity = '.4';
+    card.querySelector('.actions').innerHTML = '<span class="doc-status rejected">Đã từ chối</span>';
+    updatePendingCount(-1);
+  }
+
+  function updatePendingCount(delta){
+    const el = document.getElementById('pending-count');
+    if(el) {
+        const next = Math.max(0, parseInt(el.textContent, 10) + delta);
+        el.textContent = next;
+        if(next === 0) el.style.display = 'none';
+    }
+  }
+</script>
+</body>
+</html>

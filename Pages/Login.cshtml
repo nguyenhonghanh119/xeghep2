@@ -1,0 +1,136 @@
+@page
+@model XeGhepApp.Pages.LoginModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XeGhép — Đăng nhập</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<style>
+  .auth-shell{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; background:var(--bg, #f5f6f8); font-family:'Inter', sans-serif; }
+  .auth-card{ width:100%; max-width:400px; background:var(--card-bg, #fff); border:1px solid var(--border, #e5e7eb); border-radius:16px; padding:32px 28px; box-shadow:0 8px 24px rgba(0,0,0,0.06); }
+  .auth-brand{ display:flex; align-items:center; gap:10px; margin-bottom:24px; }
+  .auth-brand .dot-route{ width:36px;height:36px;border-radius:10px; background:var(--primary, #2563eb); color:#fff;display:flex;align-items:center;justify-content:center; font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:18px; }
+  .auth-brand div{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px;}
+  .auth-brand small{display:block;font-family:'Inter',sans-serif;font-weight:500;font-size:11px;letter-spacing:.04em;color:var(--muted,#6b7280);}
+  .auth-title{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:22px;margin:0 0 4px;}
+  .auth-sub{color:var(--muted,#6b7280);font-size:14px;margin:0 0 24px;}
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text,#111827);}
+  .field .input-wrap{position:relative;display:flex;align-items:center;}
+  .field .input-wrap .ic{position:absolute;left:12px;font-size:15px;opacity:.6;}
+  .field input{ width:100%; padding:11px 12px 11px 38px; border:1px solid var(--border,#d1d5db); border-radius:10px; font-size:14px; font-family:'Inter',sans-serif; outline:none; transition:border-color .15s; box-sizing:border-box; }
+  .field input:focus{border-color:var(--primary,#2563eb);}
+  .field .toggle-pw{ position:absolute;right:10px;background:none;border:none;cursor:pointer;font-size:13px;color:var(--muted,#6b7280); }
+  .field-error{color:#dc2626;font-size:12px;margin-top:4px;display:none;}
+  .row-between{display:flex;align-items:center;justify-content:space-between;margin:2px 0 20px;font-size:13px;}
+  .remember-me{display:flex;align-items:center;gap:6px;color:var(--muted,#6b7280);}
+  .link{color:var(--primary,#2563eb);text-decoration:none;font-weight:600;}
+  .link:hover{text-decoration:underline;}
+  .btn-login{ width:100%; padding:12px; border:none; border-radius:10px; background:var(--primary,#2563eb); color:#fff; font-weight:600; font-size:15px; cursor:pointer; font-family:'Inter',sans-serif; transition:opacity .15s; }
+  .btn-login:hover{opacity:.92;}
+  .btn-login:disabled{opacity:.6;cursor:not-allowed;}
+  .auth-footer{margin-top:22px;text-align:center;font-size:13px;color:var(--muted,#6b7280);}
+  .auth-alert{ background:#fef2f2;border:1px solid #fecaca;color:#b91c1c; padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:16px; }
+</style>
+</head>
+<body>
+<div class="auth-shell">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <span class="dot-route">X</span>
+      <div>XeGhép<small>ĐI CHUNG THÔNG MINH</small></div>
+    </div>
+
+    <h1 class="auth-title">Đăng nhập</h1>
+    
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage)) {
+        <div class="auth-alert" id="login-alert">@Model.ErrorMessage</div>
+    } else {
+        <div class="auth-alert" id="login-alert" style="display:none;"></div>
+    }
+
+    <form id="login-form" method="POST" action="" onsubmit="return validateForm()">
+      <div class="field">
+        <label for="phone">Số điện thoại</label>
+        <div class="input-wrap">
+          <span class="ic">📱</span>
+          <input type="tel" id="phone" name="phone" placeholder="09xx xxx xxx" inputmode="numeric" autocomplete="tel" value="@Model.Phone" required>
+        </div>
+        <div class="field-error" id="phone-error">Vui lòng nhập số điện thoại hợp lệ.</div>
+      </div>
+
+      <div class="field">
+        <label for="password">Mật khẩu</label>
+        <div class="input-wrap">
+          <span class="ic">🔒</span>
+          <input type="password" id="password" name="password" placeholder="Nhập mật khẩu" autocomplete="current-password" required>
+          <button type="button" class="toggle-pw" id="toggle-pw" onclick="togglePassword()">Hiện</button>
+        </div>
+        <div class="field-error" id="password-error">Vui lòng nhập mật khẩu (tối thiểu 6 ký tự).</div>
+      </div>
+
+      <div class="row-between">
+        <label class="remember-me">
+          <input type="checkbox" id="remember" name="remember">
+          Ghi nhớ đăng nhập
+        </label>
+        <a href="#" class="link">Quên mật khẩu?</a>
+      </div>
+
+      <button type="submit" class="btn-login" id="btn-submit">Đăng nhập</button>
+    </form>
+
+    <div class="auth-footer">
+      Chưa có tài khoản? <a href="/DangKy" class="link">Đăng ký ngay</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  function togglePassword(){
+    const pw = document.getElementById('password');
+    const btn = document.getElementById('toggle-pw');
+    const isHidden = pw.type === 'password';
+    pw.type = isHidden ? 'text' : 'password';
+    btn.textContent = isHidden ? 'Ẩn' : 'Hiện';
+  }
+
+  function validateForm(){
+    const phone = document.getElementById('phone');
+    const password = document.getElementById('password');
+    const alertBox = document.getElementById('login-alert');
+    const btn = document.getElementById('btn-submit');
+
+    // Ẩn luôn các thông báo lỗi nhỏ dưới ô input (nếu có)
+    const phoneErr = document.getElementById('phone-error');
+    const pwErr = document.getElementById('password-error');
+    if(phoneErr) phoneErr.style.display = 'none';
+    if(pwErr) pwErr.style.display = 'none';
+
+    const phoneRegex = /^0\d{9}$/;
+    
+    // Nếu sai định dạng SĐT hoặc độ dài mật khẩu -> Hiện luôn thông báo lỗi chung
+    if(!phoneRegex.test(phone.value.trim()) || password.value.trim().length < 6){
+      if (alertBox) {
+          alertBox.textContent = 'Thông tin đăng nhập sai, hãy kiểm tra lại.';
+          alertBox.style.display = 'block';
+      }
+      return false; // Chặn không cho gửi form lên server
+    }
+    
+    if (alertBox) alertBox.style.display = 'none';
+
+    btn.disabled = true;
+    btn.textContent = 'Đang đăng nhập…';
+    return true; 
+  }
+</script>
+</body>
+</html>

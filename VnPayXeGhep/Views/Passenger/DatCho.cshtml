@@ -1,0 +1,144 @@
+@model VnPayXeGhep.Models.TripDetail
+@{
+    Layout = null;
+    int badge = ViewBag.MyTripsBadge ?? 0;
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XeGhép — Hành khách — Đặt chỗ &amp; Thanh toán</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="~/style.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand"><span class="dot-route">X</span><div>XeGhép<small>HÀNH KHÁCH</small></div></div>
+    <nav class="side-nav">
+      <a href="/khach-index" class="active"><span class="ic">🔍</span> Tìm chuyến</a>
+      <a href="/khach-chuyen-cua-toi"><span class="ic">🧭</span> Chuyến của tôi <span class="badge-count">@badge</span></a>
+      <a href="/khach-ho-so"><span class="ic">👤</span> Hồ sơ &amp; Thanh toán</a>
+    </nav>
+    <div class="sidebar-foot"><div class="av">L</div><div><b>Nguyễn Thị Lan</b><span>091 888 2233</span><span class="role-pill">Đã xác thực</span></div></div>
+  </aside>
+
+  <main class="main">
+    <div class="view" id="view-checkout">
+      <div class="topbar"><div><h1>Xác nhận đặt chỗ</h1><p>Kiểm tra thông tin chuyến và chọn phương thức thanh toán.</p></div></div>
+
+      <div class="post-layout">
+        <div>
+          <div class="card">
+            <div class="list-title">Thông tin chuyến</div>
+            <div class="route-strip" style="margin-bottom:14px">
+              <div class="pt"><div class="city">@Model.RouteFrom</div><div class="sub">@Model.DepartureTime.ToString("HH:mm") · @Model.PickupLocation</div></div>
+              <div class="route-line"><div class="node start"></div><span class="van">🚐</span><div class="node end"></div></div>
+              <div class="pt end"><div class="city">@Model.RouteTo</div><div class="sub">@Model.DropoffLocation</div></div>
+            </div>
+            <div class="admin-row" style="margin-bottom:0">
+              <div class="av">@(Model.DriverName.Length > 0 ? Model.DriverName[0].ToString() : "?")</div>
+              <div class="meta"><b>@Model.DriverName</b><div class="sub">★ @Model.DriverRating.ToString("0.0") · @Model.VehicleType · @Model.LicensePlate</div></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="list-title">Số ghế</div>
+            <div class="qty-stepper">
+              <button type="button" onclick="changeSeats(-1)">−</button>
+              <span id="seat-count">1</span>
+              <button type="button" onclick="changeSeats(1)">+</button>
+              <span style="margin-left:12px;font-size:12.5px;color:var(--ink-faint)">Còn @Model.AvailableSeats ghế trống</span>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="list-title">Phương thức thanh toán</div>
+
+            <div class="pay-option selected" data-method="online" onclick="selectPayment('online')">
+              <div class="ic">💳</div>
+              <div class="meta"><b>Thanh toán trực tuyến</b><span>Thẻ ATM/Visa/Mastercard, VNPay, Momo, ZaloPay</span></div>
+              <div class="radio"></div>
+            </div>
+
+            <div class="pay-option" data-method="cash" onclick="selectPayment('cash')">
+              <div class="ic">💵</div>
+              <div class="meta"><b>Thanh toán tiền mặt</b><span>Trả trực tiếp cho tài xế khi lên xe</span></div>
+              <div class="radio"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="preview-sticky">
+          <div class="card">
+            <div class="preview-label">Tóm tắt thanh toán</div>
+            <div class="summary-box">
+              <div class="summary-row"><span>Giá vé / ghế</span><span class="mono">@Model.PricePerSeat.ToString("N0")đ</span></div>
+              <div class="summary-row"><span>Số ghế</span><span class="mono">× <span id="summary-seats">1</span></span></div>
+              <div class="summary-row"><span>Phí dịch vụ</span><span class="mono">0đ</span></div>
+              <div class="summary-row total"><span>Tổng cộng</span><span class="mono" id="summary-total">@Model.PricePerSeat.ToString("N0")đ</span></div>
+            </div>
+            <button class="btn btn-primary btn-block" style="margin-top:16px;padding:12px" onclick="confirmBooking()" id="btn-confirm">Xác nhận đặt chỗ &amp; Thanh toán</button>
+            <p style="font-size:11.5px;color:var(--ink-faint);text-align:center;margin-top:10px">Bạn có thể huỷ chuyến miễn phí trước 3 giờ khởi hành.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="~/assets/common.js"></script>
+<script>
+  const TRIP_ID = @Html.Raw(Json.Serialize(Model.TripId));
+  const PRICE_PER_SEAT = @Model.PricePerSeat;
+  const MAX_SEATS = @Model.AvailableSeats;
+  let seats = 1;
+  let method = 'online';
+
+  function fmt(n){ return n.toLocaleString('vi-VN') + 'đ'; }
+
+  function changeSeats(delta){
+    seats = Math.max(1, Math.min(MAX_SEATS || 1, seats + delta));
+    document.getElementById('seat-count').textContent = seats;
+    document.getElementById('summary-seats').textContent = seats;
+    document.getElementById('summary-total').textContent = fmt(seats * PRICE_PER_SEAT);
+  }
+
+  function selectPayment(m){
+    method = m;
+    document.querySelectorAll('.pay-option').forEach(el => el.classList.toggle('selected', el.dataset.method === m));
+  }
+
+  async function confirmBooking(){
+    const btn = document.getElementById('btn-confirm');
+    btn.disabled = true;
+    const originalText = btn.textContent;
+
+    try {
+      if (method === 'online') {
+        btn.textContent = 'Đang chuyển đến cổng thanh toán…';
+        const result = await apiFetch('/api/passenger/bookings', {
+          method: 'POST',
+          body: JSON.stringify({ tripId: TRIP_ID, seats, paymentMethod: 'online', gateway: 'vnpay' })
+        });
+        window.location.href = result.checkoutUrl;
+      } else {
+        btn.textContent = 'Đang xử lý…';
+        await apiFetch('/api/passenger/bookings', {
+          method: 'POST',
+          body: JSON.stringify({ tripId: TRIP_ID, seats, paymentMethod: 'cash' })
+        });
+        alert('Đã đặt chỗ thành công! Vui lòng thanh toán ' + fmt(seats * PRICE_PER_SEAT) + ' tiền mặt cho tài xế khi lên xe.');
+        window.location.href = '/khach-chuyen-cua-toi';
+      }
+    } catch (err) {
+      alert(err.message);
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
+</script>
+</body>
+</html>

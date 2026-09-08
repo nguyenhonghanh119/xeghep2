@@ -1,0 +1,241 @@
+@page
+@model XeGhepApp.Pages.HoSoModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XeGhép — Tài xế — Hồ sơ &amp; giấy tờ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand"><span class="dot-route">X</span><div>XeGhép<small>TÀI XẾ</small></div></div>
+    <nav class="side-nav">
+      <a href="/Index"><span class="ic">🏠</span> Tổng quan</a>
+      <a href="/YeuCauDatCho"><span class="ic">📥</span> Yêu cầu đặt chỗ @if(Model.PendingCount > 0){<span class="badge-count">@Model.PendingCount</span>}</a>
+      <a href="/ChuyenCuaToi"><span class="ic">🧭</span> Chuyến của tôi</a>
+      <a href="/ThuNhap"><span class="ic">₫</span> Thu nhập</a>
+      <a href="/HoSo" class="active"><span class="ic">👤</span> Hồ sơ &amp; giấy tờ</a>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="av">@Model.AvatarLetter</div>
+      <div><b>@Model.FullName</b><span>★ @Model.Rating.ToString("0.0") · @(Model.AllApproved ? "Đã duyệt" : "Chờ duyệt")</span></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="view" id="view-profile">
+      <div class="topbar"><div><h1>Hồ sơ &amp; giấy tờ</h1><p>Thông tin cá nhân, xe và trạng thái duyệt hồ sơ.</p></div></div>
+
+      <div class="profile-layout">
+        <div class="card" style="text-align:center">
+          <div class="av-xl" id="profile-avatar">@Model.AvatarLetter</div>
+          <h3 style="font-size:16px" id="profile-name-display">@Model.FullName</h3>
+          <p style="font-size:12px;color:var(--ink-faint);margin-top:2px">Tài xế từ @Model.DriverSinceYear</p>
+          <div style="margin-top:10px" id="profile-overall-status">
+            @if(Model.AllApproved){
+              <span class="doc-status approved">Hồ sơ đã duyệt</span>
+            }else{
+              <span class="doc-status pending">@Model.PendingDocsCount giấy tờ đang chờ/cần xử lý</span>
+            }
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <div class="list-title">Thông tin cá nhân &amp; xe</div>
+            <form id="profile-form" class="form-grid" onsubmit="return false">
+              <div class="field"><label>Họ và tên</label><div class="input"><input name="fullName" value="@Model.FullName"></div></div>
+              <div class="field"><label>Số điện thoại</label><div class="input"><input name="phone" value="@Model.Phone"></div></div>
+              <div class="field"><label>Loại xe</label><div class="input"><input name="vehicle" value="@Model.VehicleType"></div></div>
+              <div class="field"><label>Biển số</label><div class="input"><input name="plate" value="@Model.LicensePlate"></div></div>
+            </form>
+          </div>
+
+          <div class="card">
+            <div class="list-title">Giấy tờ đã nộp</div>
+            <div id="documents-list">
+              @foreach(var doc in Model.Documents) {
+                  var status = XeGhepApp.Pages.HoSoModel.StatusLabel(doc.Status);
+              <div class="doc-row" data-doc-id="@doc.DocId" data-doc-type="@doc.DocType" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:nowrap">
+                <div class="l" style="display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                    <span class="ic">@XeGhepApp.Pages.HoSoModel.DocIcon(doc.DocType)</span> 
+                    <span data-doc-name>@doc.DocName</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;white-space:nowrap">
+                  <span class="doc-status @status.Css" data-status-label>@status.Label</span>
+                  <button type="button" class="btn btn-outline btn-sm" onclick="replaceDocument(this)">Cập nhật</button>
+                  <button type="button" class="btn btn-outline btn-sm" onclick="deleteDocument(this)">Xóa</button>
+                </div>
+              </div>
+              }
+              @if(!Model.Documents.Any()){
+                <p id="no-docs-msg" style="font-size:13px;color:var(--ink-faint)">Chưa nộp giấy tờ nào.</p>
+              }
+            </div>
+            <button class="btn btn-outline" style="margin-top:6px" onclick="uploadDocument()">+ Tải lên giấy tờ mới</button>
+            <input type="file" id="doc-file-input" class="hidden" accept=".jpg,.jpeg,.png,.pdf" onchange="onDocFileSelected(event)">
+          </div>
+
+          <button type="button" class="btn btn-primary full" id="btn-save-profile" style="padding:12px 20px" onclick="saveProfile()">Lưu thay đổi</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="/assets/common.js"></script>
+<script>
+  let pendingUpload = null; 
+  const docIcons = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(XeGhepApp.Pages.HoSoModel.DocIcons));
+
+  async function saveProfile(){
+    const form = document.getElementById('profile-form');
+    const data = Object.fromEntries(new FormData(form).entries());
+    const btn = document.getElementById('btn-save-profile');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Đang lưu…';
+
+    try {
+      const res = await fetch('/save-profile.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await res.json();
+      if (!result.ok) {
+        alert(result.message || 'Không thể lưu thay đổi.');
+        return;
+      }
+      document.getElementById('profile-name-display').textContent = result.fullName;
+      document.getElementById('profile-avatar').textContent = result.fullName.trim().split(' ').pop().charAt(0);
+      alert('Đã gửi thông tin cho admin, hồ sơ đang chờ phê duyệt.');
+    } catch (err) {
+      alert('Lỗi kết nối, vui lòng thử lại.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
+
+  function uploadDocument(){
+    const docName = prompt('Nhập tên loại giấy tờ (VD: Giấy khám sức khoẻ):');
+    if (!docName) return;
+    const docType = docName.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'other_' + Date.now();
+    pendingUpload = { docType, docName, btn: null };
+    document.getElementById('doc-file-input').click();
+  }
+
+  function replaceDocument(btn){
+    const row = btn.closest('.doc-row');
+    pendingUpload = { docType: row.dataset.docType, docName: row.querySelector('[data-doc-name]').textContent, btn };
+    document.getElementById('doc-file-input').click();
+  }
+
+  async function onDocFileSelected(e){
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file || !pendingUpload) return;
+    const { docType, docName } = pendingUpload;
+
+    const fd = new FormData();
+    fd.append('doc_type', docType);
+    fd.append('doc_name', docName);
+    fd.append('file', file);
+
+    try {
+      const res = await fetch('/upload-document.php', { method: 'POST', body: fd });
+      const result = await res.json();
+      if (!result.ok) {
+        alert(result.message || 'Tải lên thất bại.');
+        return;
+      }
+      addOrUpdateDocRow(docType, docName, result.docId);
+    } catch (err) {
+      alert('Lỗi kết nối, vui lòng thử lại.');
+    } finally {
+      pendingUpload = null;
+    }
+  }
+
+  async function deleteDocument(btn){
+    const row = btn.closest('.doc-row');
+    const docId = row.dataset.docId;
+    const docName = row.querySelector('[data-doc-name]').textContent;
+
+    if (!confirm(`Xóa giấy tờ "${docName}"?`)) return;
+
+    btn.disabled = true;
+    try {
+      const res = await fetch('/delete-document.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ doc_id: docId, doc_type: row.dataset.docType })
+      });
+      const result = await res.json();
+      if (!result.ok) {
+        alert(result.message || 'Không thể xóa giấy tờ.');
+        btn.disabled = false;
+        return;
+      }
+      row.remove();
+
+      const list = document.getElementById('documents-list');
+      if (!list.querySelector('.doc-row')) {
+        const p = document.createElement('p');
+        p.id = 'no-docs-msg';
+        p.style.cssText = 'font-size:13px;color:var(--ink-faint)';
+        p.textContent = 'Chưa nộp giấy tờ nào.';
+        list.appendChild(p);
+      }
+    } catch (err) {
+      alert('Lỗi kết nối, vui lòng thử lại.');
+      btn.disabled = false;
+    }
+  }
+
+  function addOrUpdateDocRow(docType, docName, docId){
+    const list = document.getElementById('documents-list');
+    const noDocsMsg = document.getElementById('no-docs-msg');
+    if (noDocsMsg) noDocsMsg.remove();
+
+    let row = list.querySelector(`.doc-row[data-doc-type="${CSS.escape(docType)}"]`);
+    if (!row) {
+      row = document.createElement('div');
+      row.className = 'doc-row';
+      row.dataset.docType = docType;
+      if (docId != null) row.dataset.docId = docId;
+      row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:nowrap';
+      row.innerHTML = `<div class="l" style="display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span class="ic">${docIcons[docType] || '📄'}</span> <span data-doc-name>${docName}</span></div>
+                        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;white-space:nowrap">
+                          <span class="doc-status pending" data-status-label>Chờ duyệt</span>
+                          <button type="button" class="btn btn-outline btn-sm" onclick="replaceDocument(this)">Cập nhật</button>
+                          <button type="button" class="btn btn-outline btn-sm" onclick="deleteDocument(this)">Xóa</button>
+                        </div>`;
+      list.appendChild(row);
+    } else {
+      row.querySelector('[data-doc-name]').textContent = docName;
+      if (docId != null) row.dataset.docId = docId;
+    }
+
+    const statusEl = row.querySelector('[data-status-label]');
+    statusEl.className = 'doc-status approved';
+    statusEl.textContent = '✅ Tải lên thành công';
+    setTimeout(() => {
+      statusEl.className = 'doc-status pending';
+      statusEl.textContent = 'Chờ duyệt';
+    }, 1800);
+  }
+</script>
+</body>
+</html>
