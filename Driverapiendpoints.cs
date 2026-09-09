@@ -451,16 +451,18 @@ public static class DriverApiEndpoints
                 }, statusCode: 409);
             }
 
-            // Booking tiền mặt chưa bấm "Xác nhận tiền mặt" vẫn còn payment_status='pending_cash' nên
-            // không lọt vào danh sách tính tiền bên dưới — đếm lại để báo cho tài xế biết vì sao thiếu.
-            long cashUnconfirmed;
-            await using (var cmd = new MySqlCommand(@"SELECT COUNT(*) FROM bookings
+            // Tự động xác nhận thanh toán tiền mặt khi tài xế hoàn thành chuyến:
+            // "người dùng không cần xác nhận đến điểm khi thanh toán tiền mặt, chỉ cần tài xế xác nhận chuyến đi hoàn thành là được, tiền sẽ được cộng vào doanh thu"
+            await using (var autoCashCmd = new MySqlCommand(@"UPDATE bookings
+                SET payment_status = 'paid'
                 WHERE trip_id = @trip_id AND payment_method = 'cash'
-                  AND payment_status = 'pending_cash' AND status IN ('confirmed','paid','running')", conn, tx))
+                  AND payment_status = 'pending_cash' AND status IN ('confirmed','paid','running','approved')", conn, tx))
             {
-                cmd.Parameters.AddWithValue("@trip_id", tripId);
-                cashUnconfirmed = (long)(await cmd.ExecuteScalarAsync() ?? 0L);
+                autoCashCmd.Parameters.AddWithValue("@trip_id", tripId);
+                await autoCashCmd.ExecuteNonQueryAsync();
             }
+
+            long cashUnconfirmed = 0;
 
             await using (var cmd = new MySqlCommand("UPDATE trips SET status = 'done' WHERE trip_id = @trip_id", conn, tx))
             {
@@ -470,7 +472,7 @@ public static class DriverApiEndpoints
 
             var bookings = new List<(string BookingId, long PassengerId, int Seats, decimal TotalAmount, string PaymentMethod)>();
             await using (var cmd = new MySqlCommand(
-                "SELECT booking_id, passenger_id, seats, total_amount, payment_method FROM bookings WHERE trip_id = @trip_id AND status = 'running' AND payment_status = 'paid'", conn, tx))
+                "SELECT booking_id, passenger_id, seats, total_amount, payment_method FROM bookings WHERE trip_id = @trip_id AND payment_status = 'paid' AND status IN ('running','confirmed','approved')", conn, tx))
             {
                 cmd.Parameters.AddWithValue("@trip_id", tripId);
                 await using var reader = await cmd.ExecuteReaderAsync();
@@ -487,7 +489,7 @@ public static class DriverApiEndpoints
             }
 
             await using (var cmd = new MySqlCommand(
-                "UPDATE bookings SET status = 'done' WHERE trip_id = @trip_id AND status = 'running'", conn, tx))
+                "UPDATE bookings SET status = 'done' WHERE trip_id = @trip_id AND status IN ('running','confirmed','approved')", conn, tx))
             {
                 cmd.Parameters.AddWithValue("@trip_id", tripId);
                 await cmd.ExecuteNonQueryAsync();
@@ -536,12 +538,10 @@ public static class DriverApiEndpoints
                 var commission = Math.Round(totalAmount * commissionRate / 100m, 2, MidpointRounding.AwayFromZero);
                 var driverReceive = Math.Round(totalAmount - commission, 2, MidpointRounding.AwayFromZero);
                 var isOnline = b.PaymentMethod == "online";
-                var txStatus = isOnline || autoCashReconcile ? "approved" : "pending_cash_audit";
+                var txStatus = "approved";
                 var note = isOnline
                     ? $"Chuyến {tripId} thanh toán online — cộng ví tài xế"
-                    : txStatus == "approved"
-                        ? $"Chuyến {tripId} thu tiền mặt — đã đối soát, cộng ví tài xế"
-                        : $"Chờ đối soát tiền mặt — chuyến {tripId}";
+                    : $"Chuyến {tripId} thu tiền mặt — hoàn thành chuyến, cộng ví tài xế";
 
                 await using (var insertCmd = new MySqlCommand(@"INSERT INTO transactions
                     (booking_id, trip_id, passenger_id, driver_id, total_amount, commission_amount, driver_receive, payment_method, status, note)

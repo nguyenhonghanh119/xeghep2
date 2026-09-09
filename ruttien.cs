@@ -13,6 +13,7 @@ public class RutTienModel : PageModel
     private static readonly CultureInfo Vn = new("vi-VN");
 
     public string FullName { get; private set; } = "";
+    public string Phone { get; private set; } = "";
     public string? Avatar { get; private set; }
     public decimal Rating { get; private set; }
     public int PendingCount { get; private set; }
@@ -26,6 +27,7 @@ public class RutTienModel : PageModel
     public string PostedNewBankName { get; private set; } = "";
     public string PostedNewBankNumber { get; private set; } = "";
     public string PostedNewBankHolder { get; private set; } = "";
+    public string PostedVnpayPhone { get; private set; } = "";
 
     public decimal PendingWithdrawSum { get; private set; }
     public decimal AvailableToWithdrawDisplay { get; private set; }
@@ -50,6 +52,7 @@ public class RutTienModel : PageModel
         PostedNewBankName = (form["new_bank_name"].ToString() ?? "").Trim();
         PostedNewBankNumber = (form["new_bank_number"].ToString() ?? "").Trim();
         PostedNewBankHolder = (form["new_bank_holder"].ToString() ?? "").Trim();
+        PostedVnpayPhone = (form["vnpay_phone"].ToString() ?? "").Trim();
         var loginPassword = form["login_password"].ToString() ?? "";
 
         string bankInfo;
@@ -57,6 +60,12 @@ public class RutTienModel : PageModel
         {
             bankInfo = (PostedNewBankName != "" && PostedNewBankNumber != "" && PostedNewBankHolder != "")
                 ? $"{PostedNewBankName} - {PostedNewBankNumber} - {PostedNewBankHolder}"
+                : "";
+        }
+        else if (PostedBankChoice == "vnpay_custom")
+        {
+            bankInfo = !string.IsNullOrWhiteSpace(PostedVnpayPhone)
+                ? $"Ví VNPay - {PostedVnpayPhone} - {(string.IsNullOrWhiteSpace(PostedNewBankHolder) ? "Tài xế" : PostedNewBankHolder)}"
                 : "";
         }
         else
@@ -154,7 +163,7 @@ public class RutTienModel : PageModel
 
                 PostedAmount = 0;
                 PostedBankChoice = "";
-                PostedNewBankName = PostedNewBankNumber = PostedNewBankHolder = "";
+                PostedNewBankName = PostedNewBankNumber = PostedNewBankHolder = PostedVnpayPhone = "";
             }
             catch
             {
@@ -170,7 +179,7 @@ public class RutTienModel : PageModel
         var driverId = CurrentUser.DriverId(User);
         await using var conn = await Db.OpenAsync();
 
-        await using (var cmd = new MySqlCommand(@"SELECT u.full_name, u.avatar, dp.rating,
+        await using (var cmd = new MySqlCommand(@"SELECT u.full_name, u.phone, u.avatar, dp.rating,
                               COALESCE(w.available_balance, 0) wallet_balance
                        FROM users u JOIN driver_profiles dp ON u.user_id = dp.driver_id
                        LEFT JOIN wallets w ON w.user_id = u.user_id
@@ -182,6 +191,7 @@ public class RutTienModel : PageModel
             if (await reader.ReadAsync())
             {
                 FullName = reader.GetString("full_name");
+                Phone = reader.IsDBNull(reader.GetOrdinal("phone")) ? "" : reader.GetString("phone");
                 Avatar = reader.IsDBNull(reader.GetOrdinal("avatar")) ? null : reader.GetString("avatar");
                 Rating = reader.GetDecimal("rating");
                 walletBalance = reader.GetDecimal("wallet_balance");

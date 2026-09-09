@@ -164,25 +164,49 @@
             </div>
 
             <div class="form-group">
-              <label>Tài khoản nhận tiền</label>
-              <div class="bank-options">
+              <label>Phương thức &amp; Tài khoản nhận tiền</label>
+              <div class="bank-options" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
                 <label class="bank-option">
-                  <input type="radio" name="bank_choice" value="Vietcombank - ****4821 - @Model.FullName"
-                         @(Model.PostedBankChoice != "new" && Model.PostedBankChoice != "" ? "checked" : "")
-                         onchange="toggleNewBank(false)">
-                  <div class="bi">Vietcombank · ****4821<small>@Model.FullName</small></div>
+                  <input type="radio" name="bank_choice" value="Vietcombank - 1012345678 - @Model.FullName"
+                         @(Model.PostedBankChoice != "new" && Model.PostedBankChoice != "vnpay_custom" && !Model.PostedBankChoice.Contains("VNPay") ? "checked" : "")
+                         onchange="handleBankChoiceChange(this.value)">
+                  <div class="bi">🏦 Vietcombank (Demo) · 1012345678<small>@Model.FullName</small></div>
                 </label>
                 <label class="bank-option">
+                  <input type="radio" name="bank_choice" value="MB Bank - 0987654321 - @Model.FullName"
+                         @(Model.PostedBankChoice.Contains("MB Bank") ? "checked" : "")
+                         onchange="handleBankChoiceChange(this.value)">
+                  <div class="bi">🏦 MB Bank (Demo) · 0987654321<small>@Model.FullName</small></div>
+                </label>
+                <label class="bank-option">
+                  <input type="radio" name="bank_choice" value="Ví VNPay - @(string.IsNullOrEmpty(Model.Phone) ? "0912345678" : Model.Phone) - @Model.FullName"
+                         @(Model.PostedBankChoice.StartsWith("Ví VNPay -") && Model.PostedBankChoice != "vnpay_custom" ? "checked" : "")
+                         onchange="handleBankChoiceChange(this.value)">
+                  <div class="bi">📱 Ví VNPay (Demo) · @(string.IsNullOrEmpty(Model.Phone) ? "SĐT tài xế" : Model.Phone)<small>@Model.FullName</small></div>
+                </label>
+                <label class="bank-option">
+                  <input type="radio" name="bank_choice" value="vnpay_custom"
+                         @(Model.PostedBankChoice == "vnpay_custom" ? "checked" : "")
+                         onchange="handleBankChoiceChange('vnpay_custom')">
+                  <div class="bi">+ Rút về Ví VNPay khác</div>
+                </label>
+                <label class="bank-option" style="grid-column:span 2">
                   <input type="radio" name="bank_choice" value="new"
-                         @(Model.PostedBankChoice == "new" || Model.PostedBankChoice == "" ? "checked" : "")
-                         onchange="toggleNewBank(true)">
+                         @(Model.PostedBankChoice == "new" ? "checked" : "")
+                         onchange="handleBankChoiceChange('new')">
                   <div class="bi">+ Thêm tài khoản ngân hàng khác</div>
                 </label>
               </div>
 
-              <div class="new-bank-fields @(Model.PostedBankChoice == "new" ? "show" : "")" id="new-bank-fields">
+              <div class="new-bank-fields @(Model.PostedBankChoice == "vnpay_custom" ? "show" : "")" id="vnpay-custom-fields" style="@(Model.PostedBankChoice == "vnpay_custom" ? "" : "display:none")">
                 <div class="full">
-                  <input type="text" class="form-control" name="new_bank_name" placeholder="Tên ngân hàng (VD: BIDV)" value="@Model.PostedNewBankName">
+                  <input type="text" class="form-control" name="vnpay_phone" placeholder="Số điện thoại đăng ký Ví VNPay" value="@Model.PostedVnpayPhone">
+                </div>
+              </div>
+
+              <div class="new-bank-fields @(Model.PostedBankChoice == "new" ? "show" : "")" id="new-bank-fields" style="@(Model.PostedBankChoice == "new" ? "" : "display:none")">
+                <div class="full">
+                  <input type="text" class="form-control" name="new_bank_name" placeholder="Tên ngân hàng (VD: Techcombank, BIDV, Agribank)" value="@Model.PostedNewBankName">
                 </div>
                 <input type="text" class="form-control" name="new_bank_number" placeholder="Số tài khoản" value="@Model.PostedNewBankNumber">
                 <input type="text" class="form-control" name="new_bank_holder" placeholder="Chủ tài khoản" value="@Model.PostedNewBankHolder">
@@ -261,8 +285,25 @@
   function setAmountMax() {
     document.getElementById('amount').value = Math.floor(maxAvailable);
   }
-  function toggleNewBank(show) {
-    document.getElementById('new-bank-fields').classList.toggle('show', show);
+  function handleBankChoiceChange(val) {
+    var newBankFields = document.getElementById('new-bank-fields');
+    var vnpayFields = document.getElementById('vnpay-custom-fields');
+    if (val === 'new') {
+      newBankFields.style.display = 'grid';
+      newBankFields.classList.add('show');
+      vnpayFields.style.display = 'none';
+      vnpayFields.classList.remove('show');
+    } else if (val === 'vnpay_custom') {
+      vnpayFields.style.display = 'block';
+      vnpayFields.classList.add('show');
+      newBankFields.style.display = 'none';
+      newBankFields.classList.remove('show');
+    } else {
+      newBankFields.style.display = 'none';
+      newBankFields.classList.remove('show');
+      vnpayFields.style.display = 'none';
+      vnpayFields.classList.remove('show');
+    }
   }
 </script>
 </body>
