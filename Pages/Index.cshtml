@@ -240,7 +240,7 @@
     btn.textContent = 'Đang xử lý…';
     btn.disabled = true;
 
-    fetch('start-trip.php', {
+    fetch('/start-trip.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ trip_id: tripId })

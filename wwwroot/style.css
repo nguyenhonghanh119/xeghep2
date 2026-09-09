@@ -158,6 +158,19 @@
     .section-block,.post-layout,.profile-layout{grid-template-columns:1fr;}
     .form-grid{grid-template-columns:1fr;}
   }
+  @media(max-width:600px){
+    .main{padding:18px 14px 44px;}
+    .sidebar{padding:14px;}
+    .sidebar-foot{width:100%;margin-left:0;border-top:1px solid rgba(255,255,255,.08);}
+    .topbar{align-items:flex-start;gap:12px;flex-wrap:wrap;}
+    .stat-row,.earn-summary{grid-template-columns:1fr;}
+    .card{padding:16px;overflow-x:auto;}
+    .tabs{overflow-x:auto;}
+    .tabs button{white-space:nowrap;}
+    .admin-row .stats,.admin-row .actions{width:100%;margin-left:0;flex-wrap:wrap;}
+    .admin-row .actions .btn{flex:1;}
+    table{min-width:620px;}
+  }
   @media(prefers-reduced-motion: reduce){*{transition:none !important;}}
 
 /* Cho phép sidebar dùng thẻ <a> điều hướng trang thật thay vì

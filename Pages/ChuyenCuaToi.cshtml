@@ -168,7 +168,7 @@
     const originalText = btn.textContent;
     btn.textContent = 'Đang xử lý…';
 
-    fetch('start-trip.php', {
+    fetch('/start-trip.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ trip_id: tripId })
@@ -290,7 +290,7 @@
       const originalText = btn.textContent;
       btn.textContent = 'Đang xử lý…';
 
-      fetch('complete-trip.php', {
+      fetch('/complete-trip.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ trip_id: tripId })
@@ -301,6 +301,12 @@
             showToast(data.message || 'Không thể hoàn thành chuyến.', 'error');
             btn.disabled = false;
             btn.textContent = originalText;
+            return;
+          }
+          // Còn khách tiền mặt chưa xác nhận thì phần tiền đó không vào thu nhập — báo rõ trước khi tải lại.
+          if (data.cash_unconfirmed > 0) {
+            showToast(data.message, 'error');
+            setTimeout(() => location.reload(), 3000);
             return;
           }
           location.reload();

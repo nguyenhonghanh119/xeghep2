@@ -451,6 +451,17 @@ public static class DriverApiEndpoints
                 }, statusCode: 409);
             }
 
+            // Booking tiền mặt chưa bấm "Xác nhận tiền mặt" vẫn còn payment_status='pending_cash' nên
+            // không lọt vào danh sách tính tiền bên dưới — đếm lại để báo cho tài xế biết vì sao thiếu.
+            long cashUnconfirmed;
+            await using (var cmd = new MySqlCommand(@"SELECT COUNT(*) FROM bookings
+                WHERE trip_id = @trip_id AND payment_method = 'cash'
+                  AND payment_status = 'pending_cash' AND status IN ('confirmed','paid','running')", conn, tx))
+            {
+                cmd.Parameters.AddWithValue("@trip_id", tripId);
+                cashUnconfirmed = (long)(await cmd.ExecuteScalarAsync() ?? 0L);
+            }
+
             await using (var cmd = new MySqlCommand("UPDATE trips SET status = 'done' WHERE trip_id = @trip_id", conn, tx))
             {
                 cmd.Parameters.AddWithValue("@trip_id", tripId);
@@ -492,11 +503,11 @@ public static class DriverApiEndpoints
                 }
             }
 
-            bool autoPayout = false;
-            await using (var cmd = new MySqlCommand("SELECT setting_value FROM system_settings WHERE setting_key = 'auto_payout'", conn, tx))
+            bool autoCashReconcile = false;
+            await using (var cmd = new MySqlCommand("SELECT setting_value FROM system_settings WHERE setting_key = 'auto_cash_reconcile'", conn, tx))
             {
                 var val = await cmd.ExecuteScalarAsync();
-                autoPayout = val?.ToString() == "true";
+                autoCashReconcile = val?.ToString() == "true";
             }
 
             decimal walletCredit = 0;
@@ -525,10 +536,12 @@ public static class DriverApiEndpoints
                 var commission = Math.Round(totalAmount * commissionRate / 100m, 2, MidpointRounding.AwayFromZero);
                 var driverReceive = Math.Round(totalAmount - commission, 2, MidpointRounding.AwayFromZero);
                 var isOnline = b.PaymentMethod == "online";
-                var txStatus = isOnline ? "approved" : "pending_cash_audit";
+                var txStatus = isOnline || autoCashReconcile ? "approved" : "pending_cash_audit";
                 var note = isOnline
                     ? $"Chuyến {tripId} thanh toán online — cộng ví tài xế"
-                    : $"Chờ đối soát tiền mặt — chuyến {tripId}";
+                    : txStatus == "approved"
+                        ? $"Chuyến {tripId} thu tiền mặt — đã đối soát, cộng ví tài xế"
+                        : $"Chờ đối soát tiền mặt — chuyến {tripId}";
 
                 await using (var insertCmd = new MySqlCommand(@"INSERT INTO transactions
                     (booking_id, trip_id, passenger_id, driver_id, total_amount, commission_amount, driver_receive, payment_method, status, note)
@@ -548,63 +561,63 @@ public static class DriverApiEndpoints
                 }
                 txCreated++;
 
-                if (isOnline && autoPayout)
-                {
-                    walletCredit += driverReceive;
-                }
-                else if (isOnline)
-                {
-                    walletHeld += driverReceive;
-                }
-
+                // Escrow chỉ tồn tại với thanh toán online (tiền khách đã nằm trên hệ thống),
+                // chuyến tiền mặt tài xế thu trực tiếp nên không có gì để giải ngân.
                 if (isOnline)
                 {
-                    await using (var escrowRelease = new MySqlCommand(@"UPDATE payment_escrows
+                    await using var escrowRelease = new MySqlCommand(@"UPDATE payment_escrows
                         SET status='released', commission_amount=@commission,
                             released_to_driver=@driver_receive, released_at=UTC_TIMESTAMP()
-                        WHERE booking_id=@booking_id AND status='held'", conn, tx))
-                    {
-                        escrowRelease.Parameters.AddWithValue("@commission", commission);
-                        escrowRelease.Parameters.AddWithValue("@driver_receive", driverReceive);
-                        escrowRelease.Parameters.AddWithValue("@booking_id", b.BookingId);
-                        if (await escrowRelease.ExecuteNonQueryAsync() != 1)
-                            throw new InvalidOperationException($"Escrow của booking {b.BookingId} không ở trạng thái có thể giải ngân.");
-                    }
+                        WHERE booking_id=@booking_id AND status='held'", conn, tx);
+                    escrowRelease.Parameters.AddWithValue("@commission", commission);
+                    escrowRelease.Parameters.AddWithValue("@driver_receive", driverReceive);
+                    escrowRelease.Parameters.AddWithValue("@booking_id", b.BookingId);
+                    if (await escrowRelease.ExecuteNonQueryAsync() != 1)
+                        throw new InvalidOperationException($"Escrow của booking {b.BookingId} không ở trạng thái có thể giải ngân.");
+                }
 
-                    decimal availableAfter;
-                    decimal heldAfter;
-                    await using (var walletUpdate = new MySqlCommand(@"UPDATE wallets
-                        SET available_balance = available_balance + @available,
-                            held_balance = held_balance + @held
-                        WHERE user_id = @driver_id", conn, tx))
-                    {
-                        walletUpdate.Parameters.AddWithValue("@available", autoPayout ? driverReceive : 0m);
-                        walletUpdate.Parameters.AddWithValue("@held", autoPayout ? 0m : driverReceive);
-                        walletUpdate.Parameters.AddWithValue("@driver_id", driverId);
-                        await walletUpdate.ExecuteNonQueryAsync();
-                    }
-                    await using (var walletRead = new MySqlCommand(
-                        "SELECT available_balance, held_balance FROM wallets WHERE user_id = @driver_id", conn, tx))
-                    {
-                        walletRead.Parameters.AddWithValue("@driver_id", driverId);
-                        await using var reader = await walletRead.ExecuteReaderAsync();
-                        await reader.ReadAsync();
-                        availableAfter = reader.GetDecimal("available_balance");
-                        heldAfter = reader.GetDecimal("held_balance");
-                    }
+                // Cộng ví cho cả chuyến tiền mặt: đã đối soát (auto_cash_reconcile) thì vào số dư
+                // khả dụng để tài xế rút được, còn chờ đối soát thì tạm giữ ở held_balance.
+                var creditAvailable = txStatus == "approved" ? driverReceive : 0m;
+                var creditHeld = txStatus == "approved" ? 0m : driverReceive;
+                walletCredit += creditAvailable;
+                walletHeld += creditHeld;
 
-                    await using var ledger = new MySqlCommand(@"INSERT INTO wallet_transactions
-                        (user_id, type, amount, available_balance_after, held_balance_after,
-                         reference_type, reference_id, status, note)
-                        VALUES (@driver_id, @type, @amount, @available_after, @held_after,
-                                'booking', @booking_id, @status, @note)", conn, tx);
+                decimal availableAfter;
+                decimal heldAfter;
+                await using (var walletUpdate = new MySqlCommand(@"UPDATE wallets
+                    SET available_balance = available_balance + @available,
+                        held_balance = held_balance + @held
+                    WHERE user_id = @driver_id", conn, tx))
+                {
+                    walletUpdate.Parameters.AddWithValue("@available", creditAvailable);
+                    walletUpdate.Parameters.AddWithValue("@held", creditHeld);
+                    walletUpdate.Parameters.AddWithValue("@driver_id", driverId);
+                    await walletUpdate.ExecuteNonQueryAsync();
+                }
+                await using (var walletRead = new MySqlCommand(
+                    "SELECT available_balance, held_balance FROM wallets WHERE user_id = @driver_id", conn, tx))
+                {
+                    walletRead.Parameters.AddWithValue("@driver_id", driverId);
+                    await using var reader = await walletRead.ExecuteReaderAsync();
+                    await reader.ReadAsync();
+                    availableAfter = reader.GetDecimal("available_balance");
+                    heldAfter = reader.GetDecimal("held_balance");
+                }
+
+                await using (var ledger = new MySqlCommand(@"INSERT INTO wallet_transactions
+                    (user_id, type, amount, available_balance_after, held_balance_after,
+                     reference_type, reference_id, status, note)
+                    VALUES (@driver_id, @type, @amount, @available_after, @held_after,
+                            'booking', @booking_id, @status, @note)", conn, tx))
+                {
                     ledger.Parameters.AddWithValue("@driver_id", driverId);
-                    ledger.Parameters.AddWithValue("@type", autoPayout ? "trip_income" : "payment_hold");
+                    ledger.Parameters.AddWithValue("@type", "trip_income");
                     ledger.Parameters.AddWithValue("@amount", driverReceive);
                     ledger.Parameters.AddWithValue("@available_after", availableAfter);
                     ledger.Parameters.AddWithValue("@held_after", heldAfter);
                     ledger.Parameters.AddWithValue("@booking_id", b.BookingId);
-                    ledger.Parameters.AddWithValue("@status", autoPayout ? "posted" : "pending");
+                    ledger.Parameters.AddWithValue("@status", txStatus == "approved" ? "posted" : "pending");
                     ledger.Parameters.AddWithValue("@note", note);
                     await ledger.ExecuteNonQueryAsync();
                 }
@@ -639,10 +652,13 @@ public static class DriverApiEndpoints
             return Results.Json(new Dictionary<string, object?>
             {
                 ["ok"] = true,
-                ["message"] = "Đã hoàn thành chuyến",
+                ["message"] = cashUnconfirmed > 0
+                    ? $"Đã hoàn thành chuyến. Còn {cashUnconfirmed} khách tiền mặt chưa bấm \"Xác nhận tiền mặt\" nên chưa được tính vào thu nhập."
+                    : "Đã hoàn thành chuyến",
                 ["trip_id"] = tripId,
                 ["trip_status"] = "done",
                 ["transactions_created"] = txCreated,
+                ["cash_unconfirmed"] = cashUnconfirmed,
                 ["wallet_credit"] = walletCredit,
                 ["wallet_held"] = walletHeld
             });
@@ -749,7 +765,7 @@ public static class DriverApiEndpoints
     private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase) { "jpg", "jpeg", "png", "pdf" };
     private const long MaxUploadBytes = 5 * 1024 * 1024;
 
-    private static async Task<IResult> UploadDocumentAsync(HttpRequest request, IWebHostEnvironment env, System.Security.Claims.ClaimsPrincipal user)
+    private static async Task<IResult> UploadDocumentAsync(HttpRequest request, IWebHostEnvironment env, IConfiguration configuration, System.Security.Claims.ClaimsPrincipal user)
     {
         var driverId = CurrentUser.DriverId(user);
 
@@ -787,7 +803,7 @@ public static class DriverApiEndpoints
         if (!await HasValidFileSignatureAsync(file, ext))
             return Results.Json(new Dictionary<string, object?> { ["ok"] = false, ["message"] = "Nội dung file không đúng định dạng." }, statusCode: 400);
 
-        var uploadDir = Path.Combine(env.ContentRootPath, "Data", "driver-documents");
+        var uploadDir = Path.Combine(GetDriverDocumentRoot(env, configuration), "driver-documents");
         Directory.CreateDirectory(uploadDir);
 
         var safeType = System.Text.RegularExpressions.Regex.Replace(docType, "[^a-zA-Z0-9_-]", "");
@@ -873,7 +889,7 @@ public static class DriverApiEndpoints
     }
 
     // ================= delete-document.php =================
-    private static async Task<IResult> DeleteDocumentAsync(DeleteDocumentRequest? body, IWebHostEnvironment env, System.Security.Claims.ClaimsPrincipal user)
+    private static async Task<IResult> DeleteDocumentAsync(DeleteDocumentRequest? body, IWebHostEnvironment env, IConfiguration configuration, System.Security.Claims.ClaimsPrincipal user)
     {
         var driverId = CurrentUser.DriverId(user);
         var docId = body?.doc_id ?? 0;
@@ -930,9 +946,10 @@ public static class DriverApiEndpoints
             {
                 try
                 {
-                    var storageRoot = Path.GetFullPath(Path.Combine(env.ContentRootPath, "Data"));
-                    var fullPath = Path.GetFullPath(Path.Combine(storageRoot, filePath.Replace('/', Path.DirectorySeparatorChar)));
-                    if (fullPath.StartsWith(storageRoot, StringComparison.OrdinalIgnoreCase) && File.Exists(fullPath)) File.Delete(fullPath);
+                    var storageRoot = GetDriverDocumentRoot(env, configuration);
+                    var relativePath = filePath.Replace('\\', '/').TrimStart('/');
+                    var fullPath = Path.GetFullPath(Path.Combine(storageRoot, relativePath.Replace('/', Path.DirectorySeparatorChar)));
+                    if (fullPath.StartsWith(storageRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) && File.Exists(fullPath)) File.Delete(fullPath);
                 }
                 catch { }
             }
@@ -965,7 +982,7 @@ public static class DriverApiEndpoints
         return extension switch { "jpg" or "jpeg" => jpeg, "png" => png, "pdf" => pdf, _ => false };
     }
 
-    private static async Task<IResult> DownloadDocumentAsync(long id, IWebHostEnvironment env, System.Security.Claims.ClaimsPrincipal user)
+    private static async Task<IResult> DownloadDocumentAsync(long id, IWebHostEnvironment env, IConfiguration configuration, System.Security.Claims.ClaimsPrincipal user)
     {
         var driverId = CurrentUser.DriverId(user);
         await using var conn = await Db.OpenAsync();
@@ -975,14 +992,20 @@ public static class DriverApiEndpoints
         cmd.Parameters.AddWithValue("@driver_id", driverId);
         await using var reader = await cmd.ExecuteReaderAsync();
         if (!await reader.ReadAsync()) return Results.NotFound(new { message = "Không tìm thấy tài liệu." });
-        var storagePath = reader.GetString("file_path");
+        var storagePath = reader.GetString("file_path").Replace('\\', '/').TrimStart('/');
         var contentType = reader.IsDBNull(reader.GetOrdinal("mime_type")) ? "application/octet-stream" : reader.GetString("mime_type");
         var downloadName = reader.GetString("doc_name") + Path.GetExtension(storagePath);
-        var storageRoot = Path.GetFullPath(Path.Combine(env.ContentRootPath, "Data"));
+        var storageRoot = GetDriverDocumentRoot(env, configuration);
         var fullPath = Path.GetFullPath(Path.Combine(storageRoot, storagePath.Replace('/', Path.DirectorySeparatorChar)));
         if (!fullPath.StartsWith(storageRoot, StringComparison.OrdinalIgnoreCase) || !File.Exists(fullPath))
             return Results.NotFound(new { message = "File tài liệu không còn tồn tại." });
         return Results.File(fullPath, contentType, downloadName);
+    }
+
+    private static string GetDriverDocumentRoot(IWebHostEnvironment environment, IConfiguration configuration)
+    {
+        var configuredRoot = configuration["Storage:DriverDocumentsRoot"] ?? "Data";
+        return Path.GetFullPath(Path.Combine(environment.ContentRootPath, configuredRoot));
     }
 
     private static async Task<IResult> ConfirmCashAsync(string id, System.Security.Claims.ClaimsPrincipal user)

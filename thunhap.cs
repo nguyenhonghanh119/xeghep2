@@ -30,10 +30,12 @@ public class ThuNhapModel : PageModel
     public string? Avatar { get; private set; }
     public decimal Rating { get; private set; }
     public decimal WalletBalance { get; private set; }
+    public decimal HeldBalance { get; private set; }
     public int TotalTrips { get; private set; }
 
     public int PendingCount { get; private set; }
     public decimal MonthIncome { get; private set; }
+    public decimal MonthCashCollected { get; private set; }
     public decimal CommissionRate { get; private set; } = 10;
 
     public List<TransactionRowVm> Transactions { get; private set; } = new();
@@ -46,7 +48,8 @@ public class ThuNhapModel : PageModel
 
         // 1. Thông tin tài xế và số dư ví
         await using (var cmd = new MySqlCommand(@"SELECT u.full_name, u.avatar, dp.rating,
-                              COALESCE(w.available_balance, 0) wallet_balance, dp.total_trips
+                              COALESCE(w.available_balance, 0) wallet_balance,
+                              COALESCE(w.held_balance, 0) held_balance, dp.total_trips
                        FROM users u JOIN driver_profiles dp ON u.user_id = dp.driver_id
                        LEFT JOIN wallets w ON w.user_id = u.user_id
                        WHERE u.user_id = @driver_id", conn))
@@ -59,6 +62,7 @@ public class ThuNhapModel : PageModel
                 Avatar = reader.IsDBNull(reader.GetOrdinal("avatar")) ? null : reader.GetString("avatar");
                 Rating = reader.GetDecimal("rating");
                 WalletBalance = reader.GetDecimal("wallet_balance");
+                HeldBalance = reader.GetDecimal("held_balance");
                 TotalTrips = reader.GetInt32("total_trips");
             }
         }
@@ -77,11 +81,22 @@ public class ThuNhapModel : PageModel
                        WHERE driver_id = @driver_id
                        AND MONTH(created_at) = MONTH(CURRENT_DATE())
                        AND YEAR(created_at) = YEAR(CURRENT_DATE())
-                       AND status = 'approved'", conn))
+                       AND status IN ('approved','pending_cash_audit')", conn))
         {
             cmd.Parameters.AddWithValue("@driver_id", driverId);
             var val = await cmd.ExecuteScalarAsync();
             MonthIncome = val is null or DBNull ? 0 : Convert.ToDecimal(val);
+        }
+
+        await using (var cmd = new MySqlCommand(@"SELECT SUM(driver_receive) FROM transactions
+                       WHERE driver_id = @driver_id AND payment_method = 'cash'
+                       AND MONTH(created_at) = MONTH(CURRENT_DATE())
+                       AND YEAR(created_at) = YEAR(CURRENT_DATE())
+                       AND status IN ('approved','pending_cash_audit')", conn))
+        {
+            cmd.Parameters.AddWithValue("@driver_id", driverId);
+            var val = await cmd.ExecuteScalarAsync();
+            MonthCashCollected = val is null or DBNull ? 0 : Convert.ToDecimal(val);
         }
 
         // Tỉ lệ hoa hồng

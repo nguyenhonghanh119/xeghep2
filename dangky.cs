@@ -14,11 +14,14 @@ public class DangKyModel : PageModel
     private const int OtpMaxAttempts = 5;
     private readonly IWebHostEnvironment _environment;
     private readonly bool _exposeDemoCode;
+    private readonly string _driverDocumentRoot;
 
     public DangKyModel(IWebHostEnvironment environment, IConfiguration configuration)
     {
         _environment = environment;
         _exposeDemoCode = environment.IsDevelopment() || configuration.GetValue<bool>("Otp:ExposeDemoCode");
+        var configuredRoot = configuration["Storage:DriverDocumentsRoot"] ?? "Data";
+        _driverDocumentRoot = Path.GetFullPath(Path.Combine(environment.ContentRootPath, configuredRoot));
     }
 
     public string ErrorMessage { get; set; } = "";
@@ -278,7 +281,7 @@ public class DangKyModel : PageModel
                     await insertDriverCmd.ExecuteNonQueryAsync();
                 }
 
-                var uploadDir = Path.Combine(_environment.ContentRootPath, "Data", "driver-documents");
+                var uploadDir = Path.Combine(_driverDocumentRoot, "driver-documents");
                 Directory.CreateDirectory(uploadDir);
 
                 var docs = new Dictionary<string, string>

@@ -2,6 +2,13 @@
   "ConnectionStrings": {
     "DefaultConnection": "server=127.0.0.1;port=3306;database=xeghep_db;user=root;password="
   },
+  "Otp": {
+    "Provider": "Demo",
+    "ExposeDemoCode": true
+  },
+  "Storage": {
+    "ComplaintAttachmentsRoot": "../VnPayXeGhep/Data"
+  },
   "Logging": {
     "LogLevel": {
       "Default": "Information",

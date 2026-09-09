@@ -150,7 +150,7 @@ public class RutTienModel : PageModel
 
                 SuccessMessage = $"Yêu cầu rút {PostedAmount.ToString("N0", Vn)}đ đã được gửi đến Admin để duyệt. "
                     + $"Yêu cầu sẽ được xử lý trong tối đa {MaxProcessingHours} giờ. "
-                    + "Số dư của bạn chỉ bị trừ sau khi tiền đã chuyển thành công vào tài khoản ngân hàng.";
+                    + "Số tiền đã được tạm giữ; nếu bị từ chối hệ thống sẽ hoàn lại vào số dư khả dụng.";
 
                 PostedAmount = 0;
                 PostedBankChoice = "";

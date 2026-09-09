@@ -47,13 +47,18 @@
         <div class="stat-card">
           <div class="lbl">Số dư khả dụng</div>
           <div class="val mono" id="balance-val">@Model.WalletBalance.ToString("N0")đ</div>
-          <div class="delta">Có thể rút bất kỳ lúc nào</div>
+          <div class="delta">Thu nhập online đã giải ngân · Có thể rút</div>
+          @if (Model.HeldBalance > 0)
+          {
+            <div class="delta">Đang tạm giữ: @Model.HeldBalance.ToString("N0")đ</div>
+          }
           <a href="/RutTien" class="btn btn-outline btn-sm" style="margin-top:10px;display:inline-block;text-align:center;text-decoration:none">Rút tiền ngay</a>
         </div>
         <div class="stat-card">
             <div class="lbl">Thu nhập tháng @DateTime.Now.ToString("MM")</div>
             <div class="val mono" id="stat-month-earn">@Model.MonthIncome.ToString("N0")đ</div>
             <div class="delta">Hoa hồng nền tảng @Model.CommissionRate.ToString("0.##")%</div>
+            <div class="delta">Đã thu tiền mặt trực tiếp: @Model.MonthCashCollected.ToString("N0")đ</div>
         </div>
         <div class="stat-card">
             <div class="lbl">Tổng chuyến đã chạy</div>
