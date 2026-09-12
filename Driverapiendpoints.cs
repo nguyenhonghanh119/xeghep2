@@ -358,7 +358,7 @@ public static class DriverApiEndpoints
 
             int affectedBookings;
             await using (var cmd = new MySqlCommand(
-                "UPDATE bookings SET status = 'running' WHERE trip_id = @trip_id AND status = 'paid' AND payment_status = 'paid'", conn, tx))
+                "UPDATE bookings SET status = 'running' WHERE trip_id = @trip_id AND payment_status = 'paid' AND status IN ('approved','confirmed','paid')", conn, tx))
             {
                 cmd.Parameters.AddWithValue("@trip_id", tripId);
                 affectedBookings = await cmd.ExecuteNonQueryAsync();
@@ -472,7 +472,7 @@ public static class DriverApiEndpoints
 
             var bookings = new List<(string BookingId, long PassengerId, int Seats, decimal TotalAmount, string PaymentMethod)>();
             await using (var cmd = new MySqlCommand(
-                "SELECT booking_id, passenger_id, seats, total_amount, payment_method FROM bookings WHERE trip_id = @trip_id AND payment_status = 'paid' AND status IN ('running','confirmed','approved')", conn, tx))
+                "SELECT booking_id, passenger_id, seats, total_amount, payment_method FROM bookings WHERE trip_id = @trip_id AND payment_status = 'paid' AND status IN ('approved','confirmed','paid','running')", conn, tx))
             {
                 cmd.Parameters.AddWithValue("@trip_id", tripId);
                 await using var reader = await cmd.ExecuteReaderAsync();
@@ -489,7 +489,7 @@ public static class DriverApiEndpoints
             }
 
             await using (var cmd = new MySqlCommand(
-                "UPDATE bookings SET status = 'done' WHERE trip_id = @trip_id AND status IN ('running','confirmed','approved')", conn, tx))
+                "UPDATE bookings SET status = 'done' WHERE trip_id = @trip_id AND payment_status = 'paid' AND status IN ('approved','confirmed','paid','running')", conn, tx))
             {
                 cmd.Parameters.AddWithValue("@trip_id", tripId);
                 await cmd.ExecuteNonQueryAsync();
